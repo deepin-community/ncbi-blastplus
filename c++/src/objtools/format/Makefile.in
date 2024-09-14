@@ -1,0 +1,11 @@
+# $Id: Makefile.in 676228 2023-12-12 19:07:25Z ivanov $
+
+# Meta-makefile (flat-file generator)
+##################################
+
+LIB_PROJ = xformat
+
+SUB_PROJ = test
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

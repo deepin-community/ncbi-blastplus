@@ -1,0 +1,372 @@
+From d615c51fb9fe6172a84feea47906abd164198fd5 Mon Sep 17 00:00:00 2001
+From: ucko <ucko@ncbi.nlm.nih.gov>
+Date: Thu, 18 Jul 2024 18:33:56 +0000
+Subject: [PATCH] Allow substituting PCRE2 for legacy PCRE by explicit request.
+
+- For now, require opt-in via --with-components="...;PCRE2;..." (CMake),
+  --with-pcre2 (traditional Unix build system), or uncommenting the
+  relevant ThirdParty_PCRE2 setting in project_tree_builder.ini
+  (traditional Windows build system).
+- Likewise, hold off on switching the bundled copy to PCRE2 or checking
+  for any functions or headers that will become of interest.
+- Redundantly (for now) shun external PCRE2 in bin-release configurations.
+- Otherwise favor (allowed!) external installations over the bundled
+  copy, preferring PCRE2 over legacy PCRE when both are found and
+  allowed but (in due course) external legacy PCRE over bundled PCRE2 in
+  the absence of external PCRE2.
+- In the traditional build system, have the widely used PCRE_LIBS macro
+  correspond to whichever PCRE is default (when not falling back on a
+  bundled copy), and add a PCRE_LEGACY_LIBS macro for the sake of
+  anything using legacy PCRE directly (very occasionally seen).
+
+JIRA: CXX-12761,
+
+git-svn-id: https://anonsvn.ncbi.nlm.nih.gov/repos/v1/trunk/c++@102806 78c7ea69-d796-4a43-9a09-de51944f1b03
+
+Irrelevant (and inapplicable) changes to c++/src/build-system/cmake/,
+c++/src/build-system/configure (which will be regenerated anyway), and
+c++/src/build-system/project_tree_builder.ini elided.
+---
+ include/util/xregexp/regexp.hpp               |  13 +-
+ src/build-system/Makefile.mk.in               |   3 +
+ .../cmake/CMake.NCBIComponents.cmake          |   2 +-
+ .../cmake/CMake.NCBIComponentsMSVC.cmake      |  17 +-
+ .../cmake/CMake.NCBIComponentsPackage.cmake   |  10 +-
+ .../cmake/CMake.NCBIComponentsUNIXex.cmake    |  18 +-
+ .../cmake/CMake.NCBIComponentsXCODE.cmake     |   9 +
+ .../cmake/CMakeChecks.compiler.cmake          |   1 +
+ src/build-system/cmake/conanfile.py           |   2 +
+ src/build-system/cmake/config.cmake.h.in      |   3 +
+ src/build-system/config.h.in                  |   3 +
+ src/build-system/configure                    | 181 +++++++++++++++++-
+ src/build-system/configure.ac                 |  34 +++-
+ src/build-system/project_tree_builder.ini     |  21 ++
+ src/util/xregexp/CMakeLists.txt               |   7 +-
+ src/util/xregexp/Makefile.xregexp.lib         |   6 +-
+ src/util/xregexp/regexp.cpp                   |  69 ++++++-
+ 17 files changed, 376 insertions(+), 23 deletions(-)
+
+--- a/c++/include/util/xregexp/regexp.hpp
++++ b/c++/include/util/xregexp/regexp.hpp
+@@ -70,7 +70,11 @@ class NCBI_XREGEXP_EXPORT CRegexp
+ {
+ public:
+     /// Element type for GetResults().
++#ifdef HAVE_LIBPCRE2
++    typedef size_t TOffset;
++#else
+     typedef int TOffset;
++#endif
+ 
+     /// Type definitions used for code clarity.
+     typedef unsigned int TCompile;     ///< Compilation options.
+@@ -287,13 +291,20 @@ private:
+     void x_Match(CTempString str, size_t offset, TMatch flags);
+ 
+     void*  m_PReg;   /// Pointer to compiled PCRE pattern.
+-    void*  m_Extra;  /// Pointer to extra structure used for pattern study.
+ 
++#ifdef HAVE_LIBPCRE2
++    void*    m_MatchData;
++    TOffset* m_Results;
++    int      m_JITStatus;
++#else
++    void*  m_Extra;  /// Pointer to extra structure used for pattern study.
+ 
+     /// Array of locations of patterns/subpatterns resulting from
+     /// the last call to GetMatch(). Also contains 1/3 extra space used
+     /// internally by the PCRE C library.
+     int m_Results[(kRegexpMaxSubPatterns +1) * 3];
++#endif
++
+ 
+     /// The total number of pattern + subpatterns resulting from
+     /// the last call to GetMatch.
+--- a/c++/src/build-system/Makefile.mk.in
++++ b/c++/src/build-system/Makefile.mk.in
+@@ -390,6 +390,9 @@ CMPRS_LIB     = $(Z_LIB) $(BZ2_LIB) $(ZS
+ # wrapper and goes by the name "regexp".
+ PCRE_INCLUDE   = @PCRE_INCLUDE@
+ PCRE_LIBS      = @PCRE_LIBS@
++PCRE_LEGACY_LIBS = @PCRE_LEGACY_LIBS@
++PCRE2_INCLUDE  = @PCRE2_INCLUDE@
++PCRE2_LIBS     = @PCRE2_LIBS@
+ PCREPOSIX_LIBS = @PCREPOSIX_LIBS@
+ PCRE_LIB       = @PCRE_LIB@
+ 
+--- a/c++/src/build-system/config.h.in
++++ b/c++/src/build-system/config.h.in
+@@ -486,6 +486,9 @@
+ /* Define to 1 if libpcre is available. */
+ #undef HAVE_LIBPCRE
+ 
++/* Define to 1 if libpcre2 is available. */
++#undef HAVE_LIBPCRE2
++
+ /* Define to 1 if libpng is available. */
+ #undef HAVE_LIBPNG
+ 
+--- a/c++/src/build-system/configure.ac
++++ b/c++/src/build-system/configure.ac
+@@ -90,7 +90,7 @@ case "$with_3psw" in
+          with_yaml_cpp=no
+       fi
+       m4_foreach(X, [sss, sssutils, sssdb, vdb, ngs, ncbicrypt, libunwind,
+-                     z, bz2, lzo, zstd, pcre, mbedtls,
++                     z, bz2, lzo, zstd, pcre, pcre2, mbedtls,
+                      gmp, gcrypt, nettle, gnutls, openssl, krb5, boost, lmdb,
+                      sybase, ftds, mysql, opengl, mesa, glut, glew, gl2ps,
+                      wxwidgets, freetype, ftgl, fastcgi, fastcgipp,
+@@ -324,6 +324,10 @@ AC_ARG_WITH(pcre,
+    [ --with-pcre=DIR         use PCRE installation in DIR])
+ AC_ARG_WITH(pcre,
+    [ --without-pcre          use internal copy of PCRE])
++AC_ARG_WITH(pcre2,
++   [ --with-pcre2=DIR        use PCRE2 installation in DIR])
++AC_ARG_WITH(pcre,
++   [ --without-pcre2         do not use PCRE2])
+ AC_ARG_WITH(mbedtls,
+    [ --with-mbedtls(=DIR)    use external mbedTLS installation (in DIR)])
+ AC_ARG_WITH(gmp,
+@@ -728,7 +732,7 @@ ncbi-c wxwidgets wxwidgets-ucs fastcgi f
+ sss sssdb sssutils included-sss \
+ geo included-geo vdb downloaded-vdb static-vdb ngs ncbicrypt libunwind libdw \
+ backward-cpp backward-cpp-sig \
+-z bz2 lzo zstd pcre mbedtls \
++z bz2 lzo zstd pcre pcre2 mbedtls \
+ gmp gcrypt nettle gnutls static-gnutls openssl krb5 \
+ sybase sybase-local sybase-new ftds mysql \
+ orbacus freetype ftgl opengl mesa glut glew glew-mx gl2ps \
+@@ -798,7 +802,7 @@ for x_arg in "$@" ; do
+       | --with-ncbicrypt=* \
+       | --with-libunwind=* | --with-libdw=* | --with-backward-cpp=* \
+       | --with-z=* | --with-bz2=* | --with-lzo=* | --with-zstd=* \
+-      | --with-pcre=* | --with-mbedtls=* \
++      | --with-pcre=* | --with-pcre2=* | --with-mbedtls=* \
+       | --with-gmp=* | --with-gcrypt=* | --with-nettle=* \
+       | --with-gnutls=* | --with-openssl=* | --with-krb5=* \
+       | --with-sybase-local=* | --with-ftds=*/* | --with-mysql=* \
+@@ -892,6 +896,7 @@ if test "$with_bin_release" = "yes" ; th
+    : ${with_libdw=no}
+    : ${with_ncbicrypt=no}
+    : ${with_pcre=no} # Too much variation across distributions.
++   : ${with_pcre2=no}
+    : ${with_sse42=no}
+    AC_DEFINE(NCBI_BIN_RELEASE, 1,
+              [Define to 1 when building binaries for public release.])
+@@ -4832,7 +4837,18 @@ fi
+ NCBI_CHECK_THIRD_PARTY_LIB(pcre,
+  [AC_LANG_PROGRAM([@%:@include <pcre.h>],
+    [[const char*s[]={"x"}; pcre* p; pcre_extra* x = pcre_study(p, 1, s);]])])
+-if test -z "$PCRE_LIBS"; then
++
++: ${with_pcre2=no}
++NCBI_CHECK_THIRD_PARTY_LIB_EX(pcre2, PCRE2, pcre2-8,
++ [AC_LANG_PROGRAM([@%:@define PCRE2_CODE_UNIT_WIDTH 8
++                   @%:@include <pcre2.h>],
++   [[pcre2_config(123, NULL);]])])
++PCRE_LEGACY_LIBS=$PCRE_LIBS
++if test "x$with_pcre2" != xno; then
++   PCRE_LIBS=$PCRE2_LIBS
++fi
++
++if test -z "$PCRE_LIBS" -a -z "$PCRE2_LIBS"; then
+    pcrelocal=util/regexp
+    AC_MSG_NOTICE([using local PCRE copy in $pcrelocal])
+    PCRE_PATH="<$pcrelocal>"
+@@ -4841,8 +4857,15 @@ if test -z "$PCRE_LIBS"; then
+    # PCREPOSIX_LIBS="-lregexp"
+    PCRE_LIB="regexp"
+    AC_DEFINE(USE_LOCAL_PCRE, 1, [Define to 1 if using a local copy of PCRE.])
+-   NCBI_PACKAGE(PCRE)
++   if test -f $srcdir/include/$pcrelocal/pcre2.h; then
++      AC_DEFINE(HAVE_LIBPCRE2, 1, [Define to 1 if libpcre2 is available.])
++      NCBI_PACKAGE(PCRE2)
++   else
++      NCBI_PACKAGE(PCRE)
++   fi
+    NCBI_PACKAGE(LocalPCRE)
++elif test -n "$PCRE2_LIBS"; then
++   PCREPOSIX_LIBS=`echo "$PCRE2_LIBS" | sed -e 's/-lpcre2-8/-lpcre2posix &/'`
+ else
+    PCREPOSIX_LIBS=`echo "$PCRE_LIBS" | sed -e 's/-lpcre/-lpcreposix -lpcre/'`
+ fi
+@@ -9871,6 +9894,7 @@ AC_SUBST(BZ2_LIB)
+ AC_SUBST(ZSTD_STATIC_LIBS)
+ AC_SUBST(PCREPOSIX_LIBS)
+ AC_SUBST(PCRE_LIB)
++AC_SUBST(PCRE_LEGACY_LIBS)
+ AC_SUBST(OPENSSL_STATIC_LIBS)
+ AC_SUBST(CURL_STATIC_LIBS)
+ AC_SUBST(SYBASE_PATH)
+--- a/c++/src/util/xregexp/CMakeLists.txt
++++ b/c++/src/util/xregexp/CMakeLists.txt
+@@ -1,6 +1,11 @@
+ # $Id: CMakeLists.txt 621427 2020-12-11 14:26:55Z ivanov $
+ 
+ NCBI_project_tags(core)
+-NCBI_requires(PCRE)
++# NCBI_optional_components(PCRE PCRE2)
++if(NCBI_COMPONENT_PCRE2_FOUND)
++  NCBI_REQUIRES(PCRE2)
++else()
++  NCBI_REQUIRES(PCRE)
++endif()
+ NCBI_add_library(xregexp xregexp_template_tester)
+ 
+--- a/c++/src/util/xregexp/Makefile.xregexp.lib
++++ b/c++/src/util/xregexp/Makefile.xregexp.lib
+@@ -3,12 +3,12 @@
+ SRC = regexp arg_regexp mask_regexp convert_dates_iso8601
+ LIB = xregexp
+ 
+-CPPFLAGS = $(ORIG_CPPFLAGS) $(PCRE_INCLUDE)
++CPPFLAGS = $(ORIG_CPPFLAGS) $(PCRE_INCLUDE) $(PCRE2_INCLUDE)
+ 
+ DLL_LIB = $(PCRE_LIB) xutil
+-LIBS    = $(PCRE_LIBS)
++LIBS    = $(PCRE_LIBS) $(PCRE2_LIBS)
+ 
+ USES_LIBRARIES =  \
+-    $(PCRE_LIB) $(PCRE_LIBS) xncbi
++    $(PCRE_LIB) $(PCRE_LIBS) $(PCRE2_LIBS) xncbi
+ 
+ WATCHERS = ivanov
+--- a/c++/src/util/xregexp/regexp.cpp
++++ b/c++/src/util/xregexp/regexp.cpp
+@@ -34,8 +34,14 @@
+ #include <corelib/ncbi_limits.h>
+ #include <corelib/ncbistl.hpp>
+ #include <util/xregexp/regexp.hpp>
+-#include <pcre.h>
+-#define PCRE_FLAG(x) PCRE_##x
++#ifdef HAVE_LIBPCRE2
++#  define PCRE2_CODE_UNIT_WIDTH 8
++#  include <pcre2.h>
++#  define PCRE_FLAG(x) PCRE2_##x
++#else
++#  include <pcre.h>
++#  define PCRE_FLAG(x) PCRE_##x
++#endif
+ 
+ #include <memory>
+ #include <stdlib.h>
+@@ -103,7 +109,15 @@ static int s_GetRealMatchFlags(CRegexp::
+ 
+ 
+ CRegexp::CRegexp(CTempStringEx pattern, TCompile flags)
+-    : m_PReg(NULL), m_Extra(NULL), m_NumFound(0)
++    : m_PReg(NULL),
++#ifdef HAVE_LIBPCRE2
++      m_MatchData(NULL),
++      m_Results(NULL),
++      m_JITStatus(PCRE2_ERROR_UNSET),
++#else
++      m_Extra(NULL),
++#endif
++      m_NumFound(0)
+ {
+     Set(pattern, flags);
+ }
+@@ -111,33 +125,63 @@ CRegexp::CRegexp(CTempStringEx pattern,
+ 
+ CRegexp::~CRegexp()
+ {
++#ifdef HAVE_LIBPCRE2
++    pcre2_code_free((pcre2_code*)m_PReg);
++    pcre2_match_data_free((pcre2_match_data*)m_MatchData);
++#else
+     (*pcre_free)(m_PReg);
+     (*pcre_free)(m_Extra);
++#endif
+ }
+ 
+ 
+ void CRegexp::Set(CTempStringEx pattern, TCompile flags)
+ {
+     if ( m_PReg ) {
++#ifdef HAVE_LIBPCRE2
++        pcre2_code_free((pcre2_code*)m_PReg);
++#else
+         (*pcre_free)(m_PReg);
++#endif
+     }
++#ifdef HAVE_LIBPCRE2
++    int err_num;
++#else
+     const char *err;
++#endif
+     TOffset err_offset;
+     int x_flags = s_GetRealCompileFlags(flags);
+ 
++#ifdef HAVE_LIBPCRE2
++    m_PReg = pcre2_compile((PCRE2_SPTR) pattern.data(), pattern.size(),
++                           x_flags, &err_num, &err_offset, NULL);
++#else
+     if ( pattern.HasZeroAtEnd() ) {
+         m_PReg = pcre_compile(pattern.data(), x_flags, &err, &err_offset, NULL);
+     } else {
+         m_PReg = pcre_compile(string(pattern).c_str(), x_flags, &err, &err_offset, NULL);
+     }
++#endif
+     if ( !m_PReg ) {
++#ifdef HAVE_LIBPCRE2
++        char err[120];
++        pcre2_get_error_message(err_num, (PCRE2_UCHAR*) err, ArraySize(err));
++#endif
+         NCBI_THROW(CRegexpException, eCompile, "Compilation of the pattern '" +
+                    string(pattern) + "' failed: " + err);
+     }
++#ifdef HAVE_LIBPCRE2
++    pcre2_match_data_free((pcre2_match_data*)m_MatchData);
++    m_MatchData = pcre2_match_data_create_from_pattern((pcre2_code*)m_PReg,
++                                                       NULL);
++    // Too heavyweight to use by default; a flag may be in order.
++    // m_JITStatus = pcre2_jit_compile((pcre2_code*)m_PReg, PCRE2_JIT_COMPLETE);
++#else
+     if ( m_Extra ) {
+         (*pcre_free)(m_Extra);
+     }
+     m_Extra = pcre_study((pcre*)m_PReg, 0, &err);
++#endif
+ }
+ 
+ 
+@@ -158,8 +202,12 @@ CTempString CRegexp::GetSub(CTempString
+     if ( (int)idx >= m_NumFound ) {
+         return CTempString();
+     }
++#ifdef HAVE_LIBPCRE2
++    static const PCRE2_SIZE kNotFound = PCRE2_UNSET;
++#else
+     static const int kNotFound = -1;
+-    const int * offsets = m_Results;
++#endif
++    const auto * offsets = m_Results;
+     auto start = offsets[2 * idx];
+     auto end   = offsets[2 * idx + 1];
+     if (start == kNotFound  ||  end == kNotFound) {
+@@ -172,10 +220,23 @@ CTempString CRegexp::GetSub(CTempString
+ void CRegexp::x_Match(CTempString str, size_t offset, TMatch flags)
+ {
+     int x_flags = s_GetRealMatchFlags(flags);
++#ifdef HAVE_LIBPCRE2
++    auto f = (m_JITStatus == 0) ? &pcre2_jit_match : &pcre2_match;
++    auto *match_data = (pcre2_match_data*) m_MatchData;
++    int rc = (*f)((pcre2_code*) m_PReg, (PCRE2_UCHAR*)str.data(), str.length(),
++                  offset, x_flags, match_data, NULL);
++    m_Results = pcre2_get_ovector_pointer(match_data);
++    if (rc >= 0) {
++        m_NumFound = pcre2_get_ovector_count(match_data);
++    } else {
++        m_NumFound = -1;
++    }
++#else
+     m_NumFound = pcre_exec((pcre*)m_PReg, (pcre_extra*)m_Extra, str.data(),
+                            (int)str.length(), (int)offset,
+                            x_flags, m_Results,
+                            (int)(kRegexpMaxSubPatterns +1) * 3);
++#endif
+ }
+ 
+ 

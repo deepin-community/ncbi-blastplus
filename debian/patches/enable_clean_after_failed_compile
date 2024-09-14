@@ -1,0 +1,16 @@
+Subject: clean after failure
+Description: Enable clean
+Author: Tim Booth
+Last-Updated: 2013-06-01
+Forwarded: no
+--- a/c++/src/build-system/new_module.sh.in
++++ b/c++/src/build-system/new_module.sh.in
+@@ -203,7 +203,7 @@ if test -z "$datatool"; then # keep look
+         if test -n "$DYLD_LIBRARY_PATH"; then
+             wrapper="DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH"
+         fi
+-    else
++    elif [ "$1" != "purge_sources" ] ; then
+         echo "Unable to find datatool." >&2
+         exit 2
+     fi

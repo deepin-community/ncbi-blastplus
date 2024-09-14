@@ -1,0 +1,8 @@
+# $Id: Makefile.in 673641 2023-10-05 19:20:12Z ivanov $
+
+APP_PROJ = seqdb_unit_test seqdb_lmdb_unit_test seqdb_tax4blast_unit_test
+
+REQUIRES = Boost.Test.Included
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

@@ -1,0 +1,32 @@
+Subject: avoid redundant rpath entries on multiarch systems
+
+ * src/build-system/configure(.ac): when ensuring that executables
+   will be able to find libstdc++, don't add rpath entries that files
+   under /etc/ld.so.conf.d already specify, even if they don't resemble
+   traditional single-architecture or biarch locations.
+
+Debian-Bug: 633567.
+Author: Aaron M. Ucko <ucko@debian.org>
+Last-Update: 2011-08-28
+--- a/c++/src/build-system/configure
++++ b/c++/src/build-system/configure
+@@ -10912,7 +10912,7 @@ case "$compiler:$compiler_version:$with_
+                break
+                ;;
+             /* )
+-               found=true
++               fgrep -qsx $abs_dir /etc/ld.so.conf.d/*  ||  found=true
+                break
+                ;;
+         esac
+--- a/c++/src/build-system/configure.ac
++++ b/c++/src/build-system/configure.ac
+@@ -2491,7 +2491,7 @@ case "$compiler:$compiler_version:$with_
+                break
+                ;;
+             /* )
+-               found=true
++               fgrep -qsx $abs_dir /etc/ld.so.conf.d/*  ||  found=true
+                break
+                ;;
+         esac

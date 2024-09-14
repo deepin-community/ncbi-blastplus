@@ -1,4 +1,210 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/dpkg/architecture.mk
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+export HOME=$(CURDIR)/fakehome
+
+NUMJOBS=1
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  ifneq (sh4,$(DEB_BUILD_ARCH))
+    NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  endif
+endif
+
+DEB_CONFIGURE_COMMON_FLAGS=--without-autodep --without-makefile-auto-update \
+    --with-flat-makefile --without-caution --without-dbapi --without-lzo \
+    --without-debug --without-downloaded-vdb --without-sse42
+DEB_CONFIGURE_EXTRA_FLAGS=$(DEB_CONFIGURE_COMMON_FLAGS) --with-dll --with-mt \
+    --with-runpath=/usr/lib/ncbi-blast+ --with-build-root=BUILD \
+    --with-mbedtls --with-pcre2
+
+proj=algo/blast/ app/ objmgr/ objtools/align_format/ objtools/blast/
+
+#ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+DEB_CONFIGURE_EXTRA_FLAGS += --without-strip --with-symbols
+#endif
+
+#export DEB_BUILD_MAINT_OPTIONS=hardening=+all,-pie
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all,-pie reproducible=-timeless
+export DEB_CFLAGS_MAINT_APPEND=-Wall -pedantic
+
+ifeq ($(DEB_HOST_ARCH_BITS),32)
+  ifeq (,$(filter armhf %i386 x32,$(DEB_HOST_ARCH)))
+    export LIBS=-latomic
+  endif
+endif
+
+ifeq (alpha,$(DEB_HOST_ARCH))
+  export DEB_CFLAGS_MAINT_APPEND   += -fsection-anchors
+  export DEB_CXXFLAGS_MAINT_APPEND += -fsection-anchors
+endif
+ifeq (hppa,$(DEB_HOST_ARCH))
+  export DEB_CFLAGS_MAINT_APPEND   += -ffunction-sections
+  export DEB_CXXFLAGS_MAINT_APPEND += -ffunction-sections
+endif
+# Down to mips64el in practice, but easy enough to generalize
+ifneq (,$(findstring mips,$(DEB_HOST_ARCH)))
+  export DEB_CFLAGS_MAINT_APPEND   += -mxgot
+  export DEB_CXXFLAGS_MAINT_APPEND += -mxgot
+endif
+
+include /usr/share/dpkg/buildflags.mk
+
+ifneq (,$(filter mips%,$(DEB_HOST_ARCH)))
+CXXFLAGS := $(CXXFLAGS:-O%=-O)
+DEB_CONFIGURE_EXTRA_FLAGS += FAST_CXXFLAGS=-O
+endif
+ifeq (sh4,$(DEB_HOST_ARCH))
+DEB_CONFIGURE_COMMON_FLAGS += --without-optimization
+endif
+
+export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKE
+
+# used for run_with_lock
+DEB_CONFIGURE_COMMON_FLAGS +=  CFLAGS_FOR_BUILD="$(CFLAGS) -fPIE"
+DEB_CONFIGURE_COMMON_FLAGS += LDFLAGS_FOR_BUILD="$(LDFLAGS)"
+
+ifneq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
+NATIVE=.native
+DEB_CONFIGURE_EXTRA_FLAGS += --build=$(DEB_BUILD_GNU_TYPE) \
+    --host=$(DEB_HOST_GNU_TYPE)
+NATIVE_BINDIR=$(CURDIR)/c++/BUILD$(NATIVE)/bin
+PREBUILT_DATATOOL_EXE=$(NATIVE_BINDIR)/datatool
+PREBUILT_PTB_EXE=$(NATIVE_BINDIR)/project_tree_builder
+export PREBUILT_DATATOOL_EXE PREBUILT_PTB_EXE
+
+$(PREBUILT_DATATOOL_EXE):
+	cd c++  &&  PREBUILT_PTB_EXE=bootstrap \
+            ./configure $(DEB_CONFIGURE_COMMON_FLAGS) --without-objects \
+            --without-algo --without-app --with-build-root=BUILD.native  ||  \
+            (tail -v -n +0 config.log BUILD.native/status/config.log; exit 1)
+	make -j$(NUMJOBS) -C c++/BUILD$(NATIVE)/build -f Makefile.flat \
+	    datatool.exe
+endif
+
+override_dh_autoreconf:
+	cd c++  && \
+	    autoheader2.69 -Isrc/build-system src/build-system/configure.ac \
+	    &&  cd src/build-system  &&  autoconf2.69
+
+override_dh_auto_configure-indep:;
+override_dh_auto_configure-arch: $(PREBUILT_DATATOOL_EXE)
+	mkdir -p $(HOME)
+	cd c++  &&  CONFIG_SHELL=/bin/bash \
+            ./configure $(DEB_CONFIGURE_EXTRA_FLAGS) \
+	    ||  (tail -v -n +0 config.log BUILD/status/config.log; exit 1)
+
+override_dh_auto_build-arch:
+	cd c++/BUILD/build  && \
+	    make -j$(NUMJOBS) -f Makefile.flat all_projects="$(proj)"
+#	   make all_r
+
+override_dh_auto_build-indep:
+	echo "Save time and do nothing for architecture independent builds"
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	-dh_auto_test
+	-c++/BUILD/build/check.sh concat_err
+	-cat c++/BUILD/build/check.sh.out_err
+endif
+
+instroot = debian/ncbi-blast+/usr
+leg_bin = debian/ncbi-blast+-legacy/usr/bin
+override_dh_auto_install-arch:
+	# cp c++/BUILD/lib/*.so $(instroot)/lib/ncbi-blast+/
+	cp c++/BUILD/bin/*    $(instroot)/bin/
+
+override_dh_auto_install-indep:
+	echo "Nothing to do for architecture independant installs"
+
+override_dh_install-arch:
+	# dh_install
+	mv $(instroot)/bin/rpsblast $(instroot)/bin/rpsblast+
+	mv $(instroot)/bin/seedtop $(instroot)/bin/seedtop+
+	mv $(instroot)/bin/get_species_taxids.sh \
+	    $(instroot)/bin/get_species_taxids
+	mv $(instroot)/bin/cleanup-blastdb-volumes.py \
+	    $(instroot)/bin/cleanup-blastdb-volumes
+	mv $(instroot)/bin/legacy_blast.pl   $(instroot)/bin/legacy_blast
+	mv $(instroot)/bin/update_blastdb.pl $(instroot)/bin/update_blastdb
+	sed -e '1s/$$/3/' $(instroot)/bin/windowmasker_2.2.22_adapter.py \
+	   > $(instroot)/bin/windowmasker_2.2.22_adapter
+	chmod +x $(instroot)/bin/windowmasker_2.2.22_adapter
+	rm $(instroot)/bin/windowmasker_2.2.22_adapter.py*
+# Clean up tests, demos, and internal build tools
+	rm -f $(instroot)/bin/*test* $(instroot)/bin/seqdb_demo \
+	    $(instroot)/bin/datatool $(instroot)/bin/run_with_lock \
+	    $(instroot)/bin/project_tree_builder
+	mkdir c++/BUILD/lib.observed
+	d=$(instroot)/bin; \
+	while :; do \
+	    (for x in $$d/*; do \
+	        readelf -d $$x 2>/dev/null \
+	        | sed -ne 's/.*NEEDED.* \[\(.*\)]$$/\1/p'; \
+            done; rm -f c++/BUILD/lib.observed/*) | sort -u | while read l; do \
+	        [ -f $(instroot)/lib/ncbi-blast+/$$l \
+	          -o \! -f c++/BUILD/lib/$$l ]  || \
+	            cp -av c++/BUILD/lib/$$l c++/BUILD/lib.observed/; \
+	    done; \
+	    [ -n "$$(ls c++/BUILD/lib.observed)" ] || break; \
+	    echo ------------------------------------------------------------; \
+	    cp -a c++/BUILD/lib.observed/* $(instroot)/lib/ncbi-blast+; \
+	    d=c++/BUILD/lib.observed; \
+	done
+
+override_dh_install-indep:
+	#if test -d $(leg_bin); then cp debian/legacy/legacy.sh $(leg_bin)/; fi
+	for x in blastall megablast blastpgp bl2seq rpsblast fastacmd formatdb \
+	         seedtop; do \
+	    sed -e "s/.{.*}/$$x/" debian/legacy/legacy.sh > $(leg_bin)/$$x; \
+	    chmod +x $(leg_bin)/$$x; \
+	done
+
+NEW_MODULE = $(CURDIR)/c++/BUILD$(NATIVE)/build/new_module.sh
+override_dh_clean:
+	cp c++/src/util/lmdb/Makefile.orig c++/src/util/lmdb/Makefile.orig.save
+	cp c++/src/util/lmdbxx/Makefile.orig c++/src/util/lmdbxx/Makefile.orig.save
+	cp c++/src/util/lmdbxx/lmdb++.h.orig c++/src/util/lmdbxx/lmdb++.h.orig.save
+
+	cp c++/configure.orig configure.orig.save
+	dh_clean
+	#Tricky - for each module directory there may be several module files
+	#or there may be none but then there is still a module named after the
+	#directory.  Clean everything!
+	-for x in c++/src/objects/* ; do \
+	    (cd "$$x"  && ( \
+		mods="`echo *.module`" ; \
+		[ "$${mods#*\*}" = "$$mods" ] || mods="`basename $$x`" ; \
+		for mod in $$mods ; do \
+	            $(NEW_MODULE) $$mod purge_sources ; \
+		done ) ; \
+	    ) ; \
+	done
+	-for x in c++/src/objtools/eutils/* ; do \
+	    (cd "$$x"  && ( \
+		mods="`echo *.module`" ; \
+		[ "$${mods#*\*}" = "$$mods" ] || mods="`basename $$x`" ; \
+		for mod in $$mods ; do \
+	            $(NEW_MODULE) --dtd $$mod purge_sources ; \
+		done ) ; \
+	    ) ; \
+	done
+	-cd c++/src/objtools/eutils/efetch  && \
+	     $(NEW_MODULE) --xsd efetch purge_sources
+	rm -rf c++/compilers/dll c++/config.log c++/Makefile
+	rm -f c++/configure.lineno c++/src/objects/blastxml/blastxml.module
+	rm -f c++/include/common/ncbi_revision.h
+	find -name check_exec.pid -delete
+	rm -rf c++/BUILD c++/BUILD.native fakehome
+	mv configure.orig.save c++/configure.orig
+	mv c++/src/util/lmdb/Makefile.orig.save c++/src/util/lmdb/Makefile.orig
+	mv c++/src/util/lmdbxx/Makefile.orig.save c++/src/util/lmdbxx/Makefile.orig
+	mv c++/src/util/lmdbxx/lmdb++.h.orig.save c++/src/util/lmdbxx/lmdb++.h.orig
 
 %:
-	dh $@
+	dh $@ --sourcedirectory=c++ --with-autoreconf

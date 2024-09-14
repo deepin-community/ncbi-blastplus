@@ -1,0 +1,14 @@
+# $Id: Makefile.in 673653 2023-10-05 19:24:50Z ivanov $
+
+# Meta-makefile("ALGO" project)
+#################################
+
+
+LIB_PROJ = blastinput
+SUB_PROJ = unit_test demo
+
+REQUIRES = SQLITE3
+#EXPENDABLE_SUB_PROJ = demo
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

@@ -1,0 +1,48 @@
+--- a/c++/src/app/winmasker/windowmasker_2.2.22_adapter.py	(original)
++++ b/c++/src/app/winmasker/windowmasker_2.2.22_adapter.py	(refactored)
+@@ -79,7 +79,7 @@
+     while True:
+         if arg_pos >= len( sys.argv ): break
+         arg = sys.argv[arg_pos]
+-        if arg not in old_wm_opt_info.keys(): tmpres.append( arg )
++        if arg not in list(old_wm_opt_info.keys()): tmpres.append( arg )
+         else:
+             if arg == '-convert':
+                 arg_pos += 1
+@@ -159,7 +159,7 @@
+         elif state == 'copy': 
+             result.append( arg )
+             state = 'check'
+-        elif arg in old_wm_opt_info.keys():
++        elif arg in list(old_wm_opt_info.keys()):
+             if arg in excludes[wm_mode]:
+                 if not old_wm_opt_info[arg]: state = 'skip'
+             else:
+@@ -172,13 +172,13 @@
+     global HELP_STR
+     mode = 'exec'
+     if len( sys.argv ) <= 1: 
+-        print HELP_STR
++        print(HELP_STR)
+         return
+     else:
+          if sys.argv[1] == '--print-only': 
+             mode = 'print'
+             if len( sys.argv ) <= 2: 
+-                print HELP_STR
++                print(HELP_STR)
+                 return
+             else: 
+                   wm_name = sys.argv[2]
+@@ -188,9 +188,9 @@
+             start_idx = 1
+     new_args = process( start_idx )
+     result_str = wm_name + ' ' + ' '.join( new_args )
+-    if mode == 'print': print result_str
++    if mode == 'print': print(result_str)
+     else:
+-        print 'running "' + result_str + '"'
++        print('running "' + result_str + '"')
+         os.system( result_str )
+ 
+ if __name__ == '__main__':

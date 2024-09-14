@@ -1,0 +1,6 @@
+# $Id: Makefile.in 661866 2023-01-20 15:27:58Z saprykin $
+
+SUB_PROJ = cassandra client protobuf cache ipg
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

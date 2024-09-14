@@ -1,0 +1,621 @@
+Author: Michael R. Crusoe <michael.crusoe@gmail.com>
+Description: make the build more reproducible
+--- a/c++/src/build-system/configure.ac
++++ b/c++/src/build-system/configure.ac
+@@ -3138,13 +3138,13 @@ case "$host_os" in
+    linux*)
+       kver=`uname -r | sed -e 's/-.*//'`
+       libcver=`ldd --version | awk 'NR == 1 { print $NF }'`
+-      verbose_host=$host_cpu-$host_vendor-linux$kver-gnu$libcver
++      verbose_host=$host_cpu-$host_vendor-linux-gnu$libcver
+       ;;
+    *) verbose_host=$host ;;
+ esac
+ 
+ #### Overall configuration mode summary
+-signature_hostname=`(hostname || uname -n) 2>/dev/null \
++signature_hostname=`echo debian_build 2>/dev/null \
+     | sed 's/\..*//; s/-/_/g; 1q'`
+ signature="${signature_compiler}_${compiler_version}-${release_debug}${mt_sfx}${dll_sfx}${bit64_sfx}${prof_sfx}--${verbose_host}-${signature_hostname}"
+ AC_DEFINE_UNQUOTED(NCBI_SIGNATURE, "$signature",
+--- a/c++/include/algo/blast/core/blast_message.h
++++ b/c++/include/algo/blast/core/blast_message.h
+@@ -117,7 +117,7 @@ void Blast_Perror(Blast_Message* *msg, I
+ 
+ /** Convenient define to call the function Blast_PerrorEx. */
+ #define Blast_PerrorWithLocation(msg, error_code, context) \
+-Blast_PerrorEx(msg, error_code, __FILE__, __LINE__, context)
++Blast_PerrorEx(msg, error_code, "c++/include/algo/blast/core/blast_message.h", __LINE__, context)
+ 
+ /** Extended version of Blast_Perror which includes parameters for the file
+  * name and line number where the error/warning occurred. This function should
+--- a/c++/include/connect/ncbi_util.h
++++ b/c++/include/connect/ncbi_util.h
+@@ -135,7 +135,7 @@ extern NCBI_XCONNECT_EXPORT MT_LOCK CORE
+  */
+ #define  LOG_WRITE(lg, code, subcode, level, message)                        \
+     LOG_Write(lg, code, subcode, level, THIS_MODULE, CORE_CURRENT_FUNCTION,  \
+-              __FILE__, __LINE__, message, 0, 0)
++              "c++/include/connect/ncbi_util.h", __LINE__, message, 0, 0)
+ 
+ #ifdef   LOG_DATA
+ /* AIX's <pthread.h> defines LOG_DATA to be an integer constant;
+@@ -144,7 +144,7 @@ extern NCBI_XCONNECT_EXPORT MT_LOCK CORE
+ #endif
+ #define  LOG_DATA(lg, code, subcode, level, data, size, message)             \
+     LOG_Write(lg, code, subcode, level, THIS_MODULE, CORE_CURRENT_FUNCTION,  \
+-              __FILE__, __LINE__, message, data, size)
++              "c++/include/connect/ncbi_util.h", __LINE__, message, data, size)
+ 
+ 
+ /** Default for THIS_MODULE.
+--- a/c++/include/corelib/impl/ncbi_java.h
++++ b/c++/include/corelib/impl/ncbi_java.h
+@@ -63,7 +63,7 @@
+ 
+ #define JAVA_ABORT(msg) \
+     { \
+-        NcbiCerr << __FILE__ << ": " << NCBI_CURRENT_FUNCTION << ": " msg << endl; \
++        NcbiCerr << "c++/include/corelib/impl/ncbi_java.h" << ": " << NCBI_CURRENT_FUNCTION << ": " msg << endl; \
+         abort(); \
+     }
+ 
+--- a/c++/include/corelib/ncbidiag.hpp
++++ b/c++/include/corelib/ncbidiag.hpp
+@@ -168,7 +168,7 @@ NCBI_XNCBI_EXPORT const char* g_DiagUnkn
+ /// @sa
+ ///   CDiagCompileInfo
+ #define DIAG_COMPILE_INFO                                           \
+-    NCBI_NS_NCBI::CDiagCompileInfo(__FILE__,                        \
++    NCBI_NS_NCBI::CDiagCompileInfo("c++/include/corelib/ncbidiag.hpp",                        \
+                                    __LINE__,                        \
+                                    NCBI_CURRENT_FUNCTION,           \
+                                    NCBI_MAKE_MODULE(NCBI_MODULE))
+--- a/c++/include/corelib/test_boost.hpp
++++ b/c++/include/corelib/test_boost.hpp
+@@ -343,7 +343,7 @@ static ::NCBI_NS_NCBI::SNcbiTestRegistra
+ BOOST_JOIN( BOOST_JOIN( test_name, _registrar ), __LINE__ ) (           \
+     boost::unit_test::make_test_case(                                   \
+         &BOOST_AUTO_TC_INVOKER( test_name ), #test_name,                \
+-        __FILE__, __LINE__ ),                                           \
++        "c++/include/corelib/test_boost.hpp", __LINE__ ),                                           \
+     ::NCBI_NS_NCBI::SNcbiTestTCTimeout<                                 \
+         BOOST_AUTO_TC_UNIQUE_ID( test_name )>::instance()->value(),     \
+     decorators );                                                       \
+--- a/c++/include/objtools/blast/seqdb_reader/impl/seqdbgeneral.hpp
++++ b/c++/include/objtools/blast/seqdb_reader/impl/seqdbgeneral.hpp
+@@ -1123,7 +1123,7 @@ void SeqDB_FileIntegrityAssert(const str
+ #define SEQDB_FILE_ASSERT(YESNO)                                        \
+     do {                                                                \
+         if (! (YESNO)) {                                                \
+-            SeqDB_FileIntegrityAssert(__FILE__, __LINE__, (#YESNO));    \
++            SeqDB_FileIntegrityAssert("c++/include/objtools/blast/seqdb_reader/impl/seqdbgeneral.hpp", __LINE__, (#YESNO));    \
+         }                                                               \
+     } while(0)
+ 
+--- a/c++/include/util/ddump_viewer.hpp
++++ b/c++/include/util/ddump_viewer.hpp
+@@ -49,7 +49,7 @@ BEGIN_NCBI_SCOPE
+ //
+ 
+ #define DEBUGDUMP_BPT(name,obj)  \
+-    do {CDebugDumpViewer().Bpt(name,&(obj),__FILE__,__LINE__);} while (0)
++    do {CDebugDumpViewer().Bpt(name,&(obj),"c++/include/util/ddump_viewer.hpp",__LINE__);} while (0)
+ 
+ 
+ //---------------------------------------------------------------------------
+--- a/c++/include/util/static_set.hpp
++++ b/c++/include/util/static_set.hpp
+@@ -886,17 +886,17 @@ public:
+     static const Type Var
+ 
+ #define DEFINE_STATIC_ARRAY_MAP(Type, Var, Array)                       \
+-    static const Type (Var)((Array), sizeof(Array), __FILE__, __LINE__)
++    static const Type (Var)((Array), sizeof(Array), "c++/include/util/static_set.hpp", __LINE__)
+ 
+ #define DEFINE_CLASS_STATIC_ARRAY_MAP(Type, Var, Array)                 \
+-    const Type (Var)((Array), sizeof(Array), __FILE__, __LINE__)
++    const Type (Var)((Array), sizeof(Array), "c++/include/util/static_set.hpp", __LINE__)
+ 
+ #define DEFINE_STATIC_ARRAY_MAP_WITH_COPY(Type, Var, Array)             \
+-    static const Type (Var)((Array), sizeof(Array), __FILE__, __LINE__, \
++    static const Type (Var)((Array), sizeof(Array), "c++/include/util/static_set.hpp", __LINE__, \
+                             NCBI_NS_NCBI::NStaticArray::eCopyWarn_hide)
+ 
+ #define DEFINE_CLASS_STATIC_ARRAY_MAP_WITH_COPY(Type, Var, Array)       \
+-    const Type (Var)((Array), sizeof(Array), __FILE__, __LINE__,        \
++    const Type (Var)((Array), sizeof(Array), "c++/include/util/static_set.hpp", __LINE__,        \
+                      NCBI_NS_NCBI::NStaticArray::eCopyWarn_hide)
+ 
+ 
+--- a/c++/src/connect/mbedtls/mbedtls/debug.h
++++ b/c++/src/connect/mbedtls/mbedtls/debug.h
+@@ -39,33 +39,33 @@
+ #define MBEDTLS_DEBUG_STRIP_PARENS(...)   __VA_ARGS__
+ 
+ #define MBEDTLS_SSL_DEBUG_MSG(level, args)                    \
+-    mbedtls_debug_print_msg(ssl, level, __FILE__, __LINE__,    \
++    mbedtls_debug_print_msg(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__,    \
+                             MBEDTLS_DEBUG_STRIP_PARENS args)
+ 
+ #define MBEDTLS_SSL_DEBUG_RET(level, text, ret)                \
+-    mbedtls_debug_print_ret(ssl, level, __FILE__, __LINE__, text, ret)
++    mbedtls_debug_print_ret(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, text, ret)
+ 
+ #define MBEDTLS_SSL_DEBUG_BUF(level, text, buf, len)           \
+-    mbedtls_debug_print_buf(ssl, level, __FILE__, __LINE__, text, buf, len)
++    mbedtls_debug_print_buf(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, text, buf, len)
+ 
+ #if defined(MBEDTLS_BIGNUM_C)
+ #define MBEDTLS_SSL_DEBUG_MPI(level, text, X)                  \
+-    mbedtls_debug_print_mpi(ssl, level, __FILE__, __LINE__, text, X)
++    mbedtls_debug_print_mpi(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, text, X)
+ #endif
+ 
+ #if defined(MBEDTLS_ECP_C)
+ #define MBEDTLS_SSL_DEBUG_ECP(level, text, X)                  \
+-    mbedtls_debug_print_ecp(ssl, level, __FILE__, __LINE__, text, X)
++    mbedtls_debug_print_ecp(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, text, X)
+ #endif
+ 
+ #if defined(MBEDTLS_X509_CRT_PARSE_C)
+ #define MBEDTLS_SSL_DEBUG_CRT(level, text, crt)                \
+-    mbedtls_debug_print_crt(ssl, level, __FILE__, __LINE__, text, crt)
++    mbedtls_debug_print_crt(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, text, crt)
+ #endif
+ 
+ #if defined(MBEDTLS_ECDH_C)
+ #define MBEDTLS_SSL_DEBUG_ECDH(level, ecdh, attr)               \
+-    mbedtls_debug_printf_ecdh(ssl, level, __FILE__, __LINE__, ecdh, attr)
++    mbedtls_debug_printf_ecdh(ssl, level, "c++/src/connect/mbedtls/mbedtls/debug.h", __LINE__, ecdh, attr)
+ #endif
+ 
+ #else /* MBEDTLS_DEBUG_C */
+--- a/c++/src/connect/ncbi_monkey.cpp
++++ b/c++/src/connect/ncbi_monkey.cpp
+@@ -83,7 +83,7 @@ const string             kEnablField
+ const string             kSeedField      = "seed";
+ 
+ #define PARAM_TWICE_EXCEPTION(param)                                        \
+-    throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),            \
++    throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),            \
+                            NULL, CMonkeyException::e_MonkeyInvalidArgs,     \
+                            string("Parameter \"" param "\" is set "         \
+                            "twice in [") + GetSection() + "]" +             \
+@@ -371,7 +371,7 @@ static string s_RuleTypeString(EMonkeyAc
+     case eMonkey_Send:
+         return "write";
+     default:
+-        throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++        throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                string("Unknown EMonkeyActionType value"));
+     }
+@@ -390,7 +390,7 @@ static string s_SocketCallString(EMonkey
+     case eMonkey_Connect:
+         return "connect()";
+     default:
+-        throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++        throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                string("Unknown EMonkeyActionType value"));
+     }
+@@ -467,7 +467,7 @@ unsigned short CMonkeyRuleBase::GetProba
+ {
+     if (m_RunPos.find(sock) == m_RunPos.end()) {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+             "The socket provided has not been registered with current rule");
+     }
+@@ -511,7 +511,7 @@ void CMonkeyRuleBase::x_ReadEIOStatus(co
+         m_ReturnStatus = eIO_Closed;
+     } else if (eIOStatus == "eio_invalidarg") {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+             string("Unsupported 'return_status': ") + eIOStatus_in);
+     } else if (eIOStatus == "eio_interrupt") {
+@@ -526,7 +526,7 @@ void CMonkeyRuleBase::x_ReadEIOStatus(co
+         m_ReturnStatus = eIO_NotSupported;
+     } else {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+             string("Could not parse 'return_status': ") + eIOStatus_in);
+     }
+@@ -543,7 +543,7 @@ void CMonkeyRuleBase::x_ReadRuns(const s
+        split it on commas*/
+     vector<string> runs_list = s_Monkey_Split(runs, ',');
+     if (runs_list.size() == 0)
+-        throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++        throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                string("Parameter \"runs\" is empty in [")
+                                + m_Section + "]" +
+@@ -573,7 +573,7 @@ void CMonkeyRuleBase::x_ReadRuns(const s
+         if (m_RunMode == eMonkey_RunProbability) {
+             if (*run.rbegin() != '%') {
+                 throw CMonkeyException(
+-                        CDiagCompileInfo(__FILE__, __LINE__),
++                        CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                         NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                         "Value is not percentage: " + run +
+                         ", values have to be either only percentages or "
+@@ -593,7 +593,7 @@ void CMonkeyRuleBase::x_ReadRuns(const s
+                 size_t last_step = m_Runs.size();
+                 if (last_step == 0 && step != 1) {
+                     throw CMonkeyException(
+-                            CDiagCompileInfo(__FILE__, __LINE__),
++                            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                             "In the string of runs: " + runs + " the first "
+                             "element MUST set value for the first run");
+@@ -610,7 +610,7 @@ void CMonkeyRuleBase::x_ReadRuns(const s
+             assert(run_format == eMonkey_RunSequence);
+             if (*run.rbegin() == '%') {
+                 throw CMonkeyException(
+-                        CDiagCompileInfo(__FILE__, __LINE__),
++                        CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                         NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                         string("Value is percentage: ") + run +
+                         string(", values have to be either only percentages or "
+@@ -619,7 +619,7 @@ void CMonkeyRuleBase::x_ReadRuns(const s
+             int val = NStr::StringToInt(run);
+             if (m_Runs.size() > 0 && val <= *m_Runs.rbegin()) {
+                 throw CMonkeyException(
+-                    CDiagCompileInfo(__FILE__, __LINE__),
++                    CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                     NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                     string("\"runs\" should contain values in "
+                            "increasing order"));
+@@ -815,7 +815,7 @@ CMonkeyConnectRule::CMonkeyConnectRule(s
+         string value = name_value[1];
+         if (name == "allow") {
+             if (allow_set) {
+-                throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++                throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                        NULL, 
+                                        CMonkeyException::e_MonkeyInvalidArgs,
+                                        string("Parameter \"allow\" is set "
+@@ -827,7 +827,7 @@ CMonkeyConnectRule::CMonkeyConnectRule(s
+         }
+     }
+     if (!allow_set)
+-        throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++        throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                string("Parameter \"allow\" not set in [")
+                                + GetSection() + "]" +
+@@ -902,7 +902,7 @@ CMonkeyPollRule::CMonkeyPollRule(string
+         string value = name_value[1];
+         if (name == "ignore") {
+             if (ignore_set) {
+-                throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++                throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                        NULL,
+                                        CMonkeyException::e_MonkeyInvalidArgs,
+                                        string("Parameter \"ignore\" is set "
+@@ -914,7 +914,7 @@ CMonkeyPollRule::CMonkeyPollRule(string
+         }
+     }
+     if (!ignore_set) {
+-        throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++        throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                string("Parameter \"ignore\" not set in [")
+                                + GetSection() + "]" +
+@@ -1032,7 +1032,7 @@ static bool s_MatchRegex(const string& t
+                                                              ".*" , "");
+     if (filtered.find_first_of("[]()+^?{}$.*\\") != string::npos) {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL,
+             CMonkeyException::e_MonkeyInvalidArgs,
+             exception_message);
+@@ -1051,7 +1051,7 @@ static bool s_MatchRegex(const string& t
+         }
+         else {
+             throw CMonkeyException(
+-                CDiagCompileInfo(__FILE__, __LINE__),
++                CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                 NULL,
+                 CMonkeyException::e_MonkeyInvalidArgs,
+                 exception_message);
+@@ -1179,7 +1179,7 @@ bool CMonkeyPlan::WriteRule(MONKEY_SOCKT
+             ss << "Probability below zero for write rule in plan " << m_Name
+                 << ". Check config!";
+             throw CMonkeyException(
+-                        CDiagCompileInfo(__FILE__, __LINE__),
++                        CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                         NULL, CMonkeyException::e_MonkeyInvalidArgs, 
+                         ss.str());
+         }
+@@ -1221,7 +1221,7 @@ bool CMonkeyPlan::ReadRule(MONKEY_SOCKTY
+             stringstream ss;
+             ss << "Probability below zero for write rule in plan " << m_Name
+                << ". Check config!";
+-            throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++            throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                    NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                    ss.str());
+         }
+@@ -1270,7 +1270,7 @@ bool CMonkeyPlan::ConnectRule(MONKEY_SOC
+             stringstream ss;
+             ss << "Probability below zero for write rule in plan " << m_Name
+                 << ". Check config!";
+-            throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++            throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                    NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                    ss.str());
+         }
+@@ -1313,7 +1313,7 @@ bool CMonkeyPlan::PollRule(size_t*     n
+             ss << "Probability below zero for write rule in plan " << m_Name
+                 << ". Check config!";
+             throw CMonkeyException(
+-                        CDiagCompileInfo(__FILE__, __LINE__),
++                        CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                         NULL, CMonkeyException::e_MonkeyInvalidArgs, 
+                         ss.str());
+         }
+@@ -1372,7 +1372,7 @@ CMonkey::CMonkey() : m_Probability(100),
+ {
+     if (sm_HookSwitch == NULL) {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+             "Launch CONNECT_Init() before initializing CMonkey instance");
+     }
+@@ -1458,7 +1458,7 @@ void CMonkey::ReloadConfig(const string&
+                 prob = (int)(NStr::StringToDouble(prob_str) * 100);
+             }
+             if (prob < 0 || prob > 100) {
+-                throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++                throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                        NULL,
+                                        CMonkeyException::e_MonkeyInvalidArgs,
+                                        "Parameter \"probability\"=" + prob_str
+@@ -1469,7 +1469,7 @@ void CMonkey::ReloadConfig(const string&
+             m_Probability = (unsigned short)prob;
+         }
+         catch (const CStringException&) {
+-            throw CMonkeyException(CDiagCompileInfo(__FILE__, __LINE__),
++            throw CMonkeyException(CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+                                    NULL, CMonkeyException::e_MonkeyInvalidArgs,
+                                    "Parameter \"probability\"=" + prob_str
+                                    + " for section [" + monkey_section
+@@ -1757,7 +1757,7 @@ bool CMonkey::RegisterThread(int token)
+        << " has been already registered in CMonkey and cannot be used again";
+     if (m_RegisteredTokens.find(token) != m_RegisteredTokens.end()) {
+         throw CMonkeyException(
+-            CDiagCompileInfo(__FILE__, __LINE__),
++            CDiagCompileInfo("c++/src/connect/ncbi_monkey.cpp", __LINE__),
+             NULL, CMonkeyException::e_MonkeyInvalidArgs,
+             ss.str());
+     }
+--- a/c++/src/connect/ncbi_priv.h
++++ b/c++/src/connect/ncbi_priv.h
+@@ -222,7 +222,7 @@ extern NCBI_XCONNECT_EXPORT LOG g_CORE_L
+             _mess.level       = _xx_level;                              \
+             _mess.module      = THIS_MODULE;                            \
+             _mess.func        = CORE_CURRENT_FUNCTION;                  \
+-            _mess.file        = __FILE__;                               \
++            _mess.file        = "c++/src/connect/ncbi_priv.h";                               \
+             _mess.line        = __LINE__;                               \
+             _mess.raw_data    = (_raw_data);                            \
+             _mess.raw_size    = (_raw_size);                            \
+--- a/c++/src/objects/seqfeat/BioSource.cpp
++++ b/c++/src/objects/seqfeat/BioSource.cpp
+@@ -941,7 +941,7 @@ static const char* const s_IgnoreCaseQua
+ };
+ 
+ typedef CStaticArraySet<const char*, PNocase_CStr> TCIgnoreCaseQualsSet;
+-static const TCIgnoreCaseQualsSet s_IgnoreCaseQualsSet(s_IgnoreCaseQuals, sizeof(s_IgnoreCaseQuals), __FILE__, __LINE__);
++static const TCIgnoreCaseQualsSet s_IgnoreCaseQualsSet(s_IgnoreCaseQuals, sizeof(s_IgnoreCaseQuals), "c++/src/objects/seqfeat/BioSource.cpp", __LINE__);
+ 
+ bool s_MayIgnoreCase(const string& value)
+ {
+@@ -963,7 +963,7 @@ static const char* const s_TaxNameElemen
+ };
+ 
+ typedef CStaticArraySet<const char*, PNocase_CStr> TCTaxNameElementQualsSet;
+-static const TCTaxNameElementQualsSet s_TaxNameElementQualsSet(s_TaxNameElementQuals, sizeof(s_TaxNameElementQuals), __FILE__, __LINE__);
++static const TCTaxNameElementQualsSet s_TaxNameElementQualsSet(s_TaxNameElementQuals, sizeof(s_TaxNameElementQuals), "c++/src/objects/seqfeat/BioSource.cpp", __LINE__);
+ 
+ bool s_IsTaxNameElement(const string& value)
+ {
+@@ -1376,7 +1376,7 @@ static const char* const s_StopWords[] =
+ };
+ 
+ typedef CStaticArraySet<const char*, PNocase_CStr> TCStopWordStrSet;
+-static const TCStopWordStrSet s_StopWordsSet(s_StopWords, sizeof(s_StopWords), __FILE__, __LINE__);
++static const TCStopWordStrSet s_StopWordsSet(s_StopWords, sizeof(s_StopWords), "c++/src/objects/seqfeat/BioSource.cpp", __LINE__);
+ 
+ 
+ bool CBioSource::IsStopWord(const string& value)
+--- a/c++/src/objects/seqfeat/SubSource.cpp
++++ b/c++/src/objects/seqfeat/SubSource.cpp
+@@ -3225,7 +3225,9 @@ static const char* const s_Countries[] =
+     "Zambia",
+     "Zimbabwe"
+ };
+-static const TCStrSet s_CountriesSet(s_Countries, sizeof(s_Countries), __FILE__, __LINE__);
++static const TCStrSet s_CountriesSet(s_Countries, sizeof(s_Countries),
++                                     "c+++/src/objects/seqfeat/SubSource.cpp",
++                                     __LINE__);
+ 
+ // former legal country names, must be in alphabetical order (case sensitive)
+ static const char* const s_Former_Countries[] = {
+@@ -3246,7 +3248,7 @@ static const char* const s_Former_Countr
+     "Yugoslavia",
+     "Zaire"
+ };
+-static const TCStrSet s_Former_CountriesSet(s_Former_Countries, sizeof(s_Former_Countries), __FILE__, __LINE__);
++static const TCStrSet s_Former_CountriesSet(s_Former_Countries, sizeof(s_Former_Countries), "c++/src/objects/seqfeat/SubSource.cpp", __LINE__);
+ 
+ // null term exemption values, must be in alphabetical order (case sensitive)
+ static const char* const s_Null_Countries[] = {
+--- a/c++/src/serial/datatool/classstr.cpp
++++ b/c++/src/serial/datatool/classstr.cpp
+@@ -850,7 +850,7 @@ mem_simple = false;
+                         "    if (!CanGet"<< mem_cName<<"()) {\n"
+                         "        ThrowUnassigned("<<member_index;
+ #if 0
+-                    code.Methods(inl) << ", __FILE__, __LINE__";
++                    code.Methods(inl) << ", "c++/src/serial/datatool/classstr.cpp", __LINE__";
+ #endif
+                     code.Methods(inl) << ");\n"
+                         "    }\n";
+--- a/c++/src/serial/serialobject.cpp
++++ b/c++/src/serial/serialobject.cpp
+@@ -299,7 +299,7 @@ void CSerialObject::ThrowUnassigned(TMem
+ // set temporary diag compile info to use argument file name and line
+ #undef DIAG_COMPILE_INFO
+ #define DIAG_COMPILE_INFO                                               \
+-        NCBI_NS_NCBI::CDiagCompileInfo(file_name? file_name: __FILE__,  \
++        NCBI_NS_NCBI::CDiagCompileInfo(file_name? file_name: "c++/src/serial/serialobject.cpp",  \
+                                        file_line? file_line: __LINE__,  \
+                                        NCBI_CURRENT_FUNCTION,           \
+                                        NCBI_MAKE_MODULE(NCBI_MODULE))
+@@ -307,7 +307,7 @@ void CSerialObject::ThrowUnassigned(TMem
+ // restore original diag compile info definition
+ #undef DIAG_COMPILE_INFO
+ #define DIAG_COMPILE_INFO                                               \
+-        NCBI_NS_NCBI::CDiagCompileInfo(__FILE__,                        \
++        NCBI_NS_NCBI::CDiagCompileInfo("c++/src/serial/serialobject.cpp",                        \
+                                        __LINE__,                        \
+                                        NCBI_CURRENT_FUNCTION,           \
+                                        NCBI_MAKE_MODULE(NCBI_MODULE))
+--- a/c++/src/util/lmdb/mdb.c
++++ b/c++/src/util/lmdb/mdb.c
+@@ -1533,7 +1533,7 @@ mdb_strerror(int err)
+ 
+ #ifndef NDEBUG
+ # define mdb_assert0(env, expr, expr_txt) ((expr) ? (void)0 : \
+-		mdb_assert_fail(env, expr_txt, mdb_func_, __FILE__, __LINE__))
++		mdb_assert_fail(env, expr_txt, mdb_func_, "c++/src/util/lmdb/mdb.c", __LINE__))
+ 
+ static void ESECT
+ mdb_assert_fail(MDB_env *env, const char *expr_txt,
+--- a/c++/src/util/lmdb/mtest.c
++++ b/c++/src/util/lmdb/mtest.c
+@@ -19,7 +19,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ int main(int argc,char * argv[])
+ {
+--- a/c++/src/util/lmdb/mtest2.c
++++ b/c++/src/util/lmdb/mtest2.c
+@@ -22,7 +22,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest2.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ int main(int argc,char * argv[])
+ {
+--- a/c++/src/util/lmdb/mtest3.c
++++ b/c++/src/util/lmdb/mtest3.c
+@@ -22,7 +22,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest3.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ int main(int argc,char * argv[])
+ {
+--- a/c++/src/util/lmdb/mtest4.c
++++ b/c++/src/util/lmdb/mtest4.c
+@@ -22,7 +22,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest4.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ int main(int argc,char * argv[])
+ {
+--- a/c++/src/util/lmdb/mtest5.c
++++ b/c++/src/util/lmdb/mtest5.c
+@@ -22,7 +22,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest5.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ int main(int argc,char * argv[])
+ {
+--- a/c++/src/util/lmdb/mtest6.c
++++ b/c++/src/util/lmdb/mtest6.c
+@@ -22,7 +22,7 @@
+ #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
+ #define RES(err, expr) ((rc = expr) == (err) || (CHECK(!rc, #expr), 0))
+ #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
+-	"%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
++	"%s:%d: %s: %s\n", "c++/src/util/lmdb/mtest6.c", __LINE__, msg, mdb_strerror(rc)), abort()))
+ 
+ char dkbuf[1024];
+ 
+--- a/c++/src/util/regexp/pcre_scanner_unittest.cc
++++ b/c++/src/util/regexp/pcre_scanner_unittest.cc
+@@ -51,7 +51,7 @@
+ #define CHECK_EQ(a, b)  do {                                    \
+   if ( (a) != (b) ) {                                           \
+     fprintf(stderr, "%s:%d: Check failed because %s != %s\n",   \
+-            __FILE__, __LINE__, #a, #b);                        \
++            "c++/src/util/regexp/pcre_scanner_unittest.cc", __LINE__, #a, #b);                        \
+     exit(1);                                                    \
+   }                                                             \
+ } while (0)
+--- a/c++/src/util/regexp/pcre_stringpiece_unittest.cc
++++ b/c++/src/util/regexp/pcre_stringpiece_unittest.cc
+@@ -19,7 +19,7 @@
+ #define CHECK(condition) do {                           \
+   if (!(condition)) {                                   \
+     fprintf(stderr, "%s:%d: Check failed: %s\n",        \
+-            __FILE__, __LINE__, #condition);            \
++            "c++/src/util/regexp/pcre_stringpiece_unittest.cc", __LINE__, #condition);            \
+     exit(1);                                            \
+   }                                                     \
+ } while (0)
+--- a/c++/src/util/static_set.cpp
++++ b/c++/src/util/static_set.cpp
+@@ -87,7 +87,7 @@ void CArrayHolder::Convert(const void* s
+           TParamStaticArrayCopyWarning::GetDefault()) ) {
+         // report incorrect usage
+         CDiagCompileInfo diag_compile_info
+-            (file? file: __FILE__,
++            (file? file: "c++/src/util/static_set.cpp",
+              file? line: __LINE__,
+              NCBI_CURRENT_FUNCTION,
+              NCBI_MAKE_MODULE(NCBI_MODULE));
+@@ -122,7 +122,7 @@ void ReportUnsafeStaticType(const char*
+     if ( TParamStaticArrayUnsafeTypeWarning::GetDefault() ) {
+         // report incorrect usage
+         CDiagCompileInfo diag_compile_info
+-            (file? file: __FILE__,
++            (file? file: "c++/src/util/static_set.cpp",
+              file? line: __LINE__,
+              NCBI_CURRENT_FUNCTION,
+              NCBI_MAKE_MODULE(NCBI_MODULE));
+@@ -145,7 +145,7 @@ void ReportIncorrectOrder(size_t curr_in
+ {
+     { // report incorrect usage
+         CDiagCompileInfo diag_compile_info
+-            (file? file: __FILE__,
++            (file? file: "c++/src/util/static_set.cpp",
+              file? line: __LINE__,
+              NCBI_CURRENT_FUNCTION,
+              NCBI_MAKE_MODULE(NCBI_MODULE));

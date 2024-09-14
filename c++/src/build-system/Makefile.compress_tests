@@ -1,0 +1,7 @@
+# $Id: Makefile.compress_tests 672694 2023-09-13 13:10:43Z ivanov $
+
+%.gz: %
+	gzip -Nf $(GZFLAGS) $<
+
+%.bz2: %
+	bzip2 -f $(BZ2FLAGS) $<

@@ -1,0 +1,20 @@
+Author: Aaron M. Ucko <ucko@debian.org>
+Date:   Sun Sep 06 22:57:35 2020 -0400
+Description: Support GCC 10+.
+Debian-Bug: 957581.
+
+* ncbifile.cpp (s_GetFileSystemInfo): Formally cast st.f_type to avoid
+  narrowing errors for cases with the high bit set when that field is
+  a 32-bit signed integer (as on i386).
+
+--- a/c++/src/corelib/ncbifile.cpp
++++ b/c++/src/corelib/ncbifile.cpp
+@@ -5178,7 +5178,7 @@ void s_GetFileSystemInfo(const string&
+     
+     GET_STATFS_INFO;
+     if (flags & (fFSI_Type | fFSI_DiskSpace)) {
+-        switch (st.f_type) {
++        switch (static_cast<Uint4>(st.f_type)) {
+             case 0xADF5:      info->fs_type = CFileUtil::eADFS;     break;
+             case 0xADFF:      info->fs_type = CFileUtil::eAFFS;     break;
+             case 0x5346414F:  info->fs_type = CFileUtil::eAFS;      break;

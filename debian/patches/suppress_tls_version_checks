@@ -1,0 +1,43 @@
+Author: Aaron M. Ucko <ucko@debian.org>
+Date:   Wed, 01 Dec 2021 22:08:16 -0500
+Description: suppress gnu TLS and mbed TLS version checks
+    
+    Prevent bailing when the exact compile-time and runtime GNU TLS versions
+    differ; trust dpkg to disallow combinations that are actually incompatible.
+    Likewise for mbed TLS.
+
+--- a/c++/src/connect/ncbi_gnutls.c
++++ b/c++/src/connect/ncbi_gnutls.c
+@@ -748,6 +748,7 @@ static EIO_Status s_GnuTlsInit(FSSLPull
+ 
+     assert(!s_GnuTlsCredAnon);
+ 
++#if 0
+     version = gnutls_check_version(0);
+     if (strcasecmp(GNUTLS_VERSION, version) != 0) {
+         CORE_LOGF_X(26, eLOG_Critical,
+@@ -755,6 +756,7 @@ static EIO_Status s_GnuTlsInit(FSSLPull
+                      GNUTLS_VERSION, version));
+         assert(0);
+     }
++#endif
+ 
+     CORE_TRACE("GnuTlsInit(): Enter");
+ 
+--- a/c++/src/connect/ncbi_mbedtls.c
++++ b/c++/src/connect/ncbi_mbedtls.c
+@@ -739,12 +739,14 @@ static EIO_Status s_MbedTlsInit(FSSLPull
+     psa_status_t psa_status;
+ 
+     mbedtls_version_get_string(version);
++#if 0
+     if (strcasecmp(MBEDTLS_VERSION_STRING, version) != 0) {
+         CORE_LOGF_X(5, eLOG_Critical,
+                     ("%s version mismatch: %s headers vs. %s runtime",
+                      kMbedTls, MBEDTLS_VERSION_STRING, version));
+         assert(0);
+     }
++#endif
+ 
+     CORE_TRACE("MbedTlsInit(): Enter");
+ 

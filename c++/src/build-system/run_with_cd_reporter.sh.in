@@ -1,0 +1,9 @@
+@script_shell@
+# $Id: run_with_cd_reporter.sh.in 664027 2023-03-06 19:46:39Z ucko $
+for x in '@PYTHON3@' "$VIRTUAL_ENV/bin/python3" "$(type -path python3)" \
+                     "$VIRTUAL_ENV/bin/python" "$(type -path python)"; do
+    if [ -x "$x" ]; then
+        exec "$x" "${0%.sh}.py" "$@"
+    fi
+done
+exec "$@"

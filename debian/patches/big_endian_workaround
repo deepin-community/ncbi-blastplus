@@ -1,0 +1,34 @@
+--- a/c++/src/app/blastdb/makeblastdb.cpp
++++ b/c++/src/app/blastdb/makeblastdb.cpp
+@@ -293,7 +293,13 @@ void CMakeBlastDBApp::Init()
+     arg_desc->AddDefaultKey("blastdb_version", "version",
+                              "Version of BLAST database to be created",
+                              CArgDescriptions::eInteger,
+-                             NStr::NumericToString(static_cast<int>(eBDB_Version5)));
++                             NStr::NumericToString(static_cast<int>
++#ifdef WORDS_BIGENDIAN
++						   (eBDB_Version4)
++#else
++						   (eBDB_Version5)
++#endif
++						   ));
+     arg_desc->SetConstraint("blastdb_version",
+                             new CArgAllow_Integers(eBDB_Version4, eBDB_Version5));
+     arg_desc->AddDefaultKey("max_file_sz", "number_of_bytes",
+--- a/c++/src/app/blastdb/makeprofiledb.cpp
++++ b/c++/src/app/blastdb/makeprofiledb.cpp
+@@ -420,7 +420,13 @@ void CMakeProfileDBApp::x_SetupArgDescri
+     arg_desc->AddDefaultKey("blastdb_version", "version",
+                              "Version of BLAST database to be created",
+                              CArgDescriptions::eInteger,
+-                             NStr::NumericToString(static_cast<int>(eBDB_Version5)));
++                             NStr::NumericToString(static_cast<int>
++#ifdef WORDS_BIGENDIAN
++						   (eBDB_Version4)
++#else
++						   (eBDB_Version5)
++#endif
++						   ));
+     arg_desc->SetConstraint("blastdb_version",
+                             new CArgAllow_Integers(eBDB_Version4, eBDB_Version5));
+ 

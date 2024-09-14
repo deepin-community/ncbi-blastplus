@@ -1,0 +1,47 @@
+Subject: blast+ use optout to send usage reports over internet
+Description: this patch change strategy to optin ie user asks
+ per config/env vars to send reports, else it is disabled by default.
+ Not a bug by itself but default strategy update to send info over internet.
+Author: Olivier Sallou <osallou@debian.org>
+Last-Updated: 202-02-10
+Forwarded: no
+--- a/c++/src/algo/blast/api/blast_usage_report.cpp
++++ b/c++/src/algo/blast/api/blast_usage_report.cpp
+@@ -190,6 +190,7 @@ void CBlastUsageReport::AddParam(EUsageP
+ void CBlastUsageReport::x_CheckBlastUsageEnv()
+ {
+ 	char * blast_usage_env = getenv("BLAST_USAGE_REPORT");
++
+ 	if(blast_usage_env != NULL){
+ 		bool enable = NStr::StringToBool(blast_usage_env);
+ 		if (!enable) {
+@@ -198,6 +199,10 @@ void CBlastUsageReport::x_CheckBlastUsag
+ 			LOG_POST(Info <<"Phone home disabled");
+ 			return ;
+ 		}
++                SetEnabled(true);
++                CUsageReportAPI::SetEnabled(true);
++                LOG_POST(Info <<"Phone home enabled");
++                return;
+ 	}
+ 
+ 	CNcbiIstrstream empty_stream(kEmptyStr);
+@@ -210,10 +215,15 @@ void CBlastUsageReport::x_CheckBlastUsag
+ 			LOG_POST(Info <<"Phone home disabled by config setting");
+ 			return ;
+ 		}
++                SetEnabled(true);
++                CUsageReportAPI::SetEnabled(true);
++                LOG_POST(Info <<"Phone home enabled by config setting");
++                return ;
+ 	}
+-	CUsageReportAPI::SetEnabled(true);
+-	SetEnabled(true);
+-	LOG_POST(Info <<"Phone home enabled");
++        // Debian optin by default (do not send reports)
++	CUsageReportAPI::SetEnabled(false);
++	SetEnabled(false);
++	LOG_POST(Info <<"Phone home disabled");
+ }
+ 
+ void CBlastUsageReport::AddParam(EUsageParams p, Int8 val)

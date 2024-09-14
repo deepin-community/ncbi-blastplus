@@ -1,0 +1,10 @@
+# $Id: Makefile.in 658230 2022-10-27 09:35:46Z stakhovv $
+
+# Meta-makefile (object utilities)
+##################################
+
+LIB_PROJ = edit
+SUB_PROJ = unit_test pubmed_fetch pubmed_citmatch test_remote_updater
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

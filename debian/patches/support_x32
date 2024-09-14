@@ -1,0 +1,16 @@
+Author: Aaron M. Ucko <ucko@debian.org>
+Date:   Wed, 01 Dec 2021 21:37:42 -0500
+Description: Support x32
+
+Avoid picking up wrong inline assembly.
+--- a/c++/include/corelib/impl/ncbi_atomic_defs.h
++++ b/c++/include/corelib/impl/ncbi_atomic_defs.h
+@@ -120,7 +120,7 @@ extern "C" {
+   (defined(__i386)  ||  defined(__sparc)  ||  defined(__x86_64)  || \
+    defined(__aarch64__))  && \
+   (!defined(__GLIBCXX__)  ||  !defined(NCBI_TCHECK))
+-#  if defined(__x86_64)  ||  defined(__aarch64__)
++#  if (defined(__x86_64)  &&  !defined(_ILP32))  ||  defined(__aarch64__)
+ #    define NCBI_COUNTER_64_BIT
+ #  endif
+ #  ifdef NCBI_COUNTER_64_BIT

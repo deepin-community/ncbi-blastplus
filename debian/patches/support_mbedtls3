@@ -1,0 +1,222 @@
+From 4395feafcadc4b74f749ce421a530922e5f58047 Mon Sep 17 00:00:00 2001
+From: ucko <ucko@ncbi.nlm.nih.gov>
+Date: Tue, 23 Apr 2024 19:21:48 +0000
+Subject: [PATCH] Accommodate Mbed TLS 3.x (specifically, 3.6.0 LTS).
+
+- Conditionally pass mbedtls_pk_parse_key the existing pRNG and its state.
+- Call psa_crypto_init during setup, as PSA may be in play even when not
+  explicitly enabled.  Documentation suggests calling it as early as
+  possible; in practice, though, holding off until after pRNG
+  initialization avoids "insufficient entropy" errors under 2.x (at least
+  2.28.8 LTS on Linux) and still works fine as of 3.6.0.
+- At least for now, ensure that MBEDTLS_SSL_VERIFY_NONE remains effective
+  by additionally capping the TLS version at 1.2; as of 1.3, certificate
+  checking has become mandatory, and Mbed TLS respects that requirement.
+- Additional tuneups to ncbi_mbedtls.c-only code:
+-- Account for error-code macro repertoire changes by conditionalizing
+   major-version-specific macros on their availability and specifically
+   checking for or emitting MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED (new)
+   as appropriate,
+-- x_ErrorToStatus: Conditionally use MBEDTLS_PRIVATE for p_bio, which has
+   no accessor.
+-- x_MbedTlsWrite: Substitute mbedtls_ssl_get_max_out_record_payload for
+   mbedtls_ssl_get_output_max_frag_len, which didn't account for other
+   relevant considerations and is now fully private.
+
+https://github.com/Mbed-TLS/mbedtls/blob/development/docs/3.0-migration-guide.md
+supplied useful guidance.  JIRA: CXX-13565.
+
+git-svn-id: https://anonsvn.ncbi.nlm.nih.gov/repos/v1/trunk/c++@102329 78c7ea69-d796-4a43-9a09-de51944f1b03
+---
+ c++/src/connect/ncbi_mbedtls.c      | 44 ++++++++++++++++++++++++++++++---
+ c++/src/connect/ncbi_priv.h         |  2 +-
+ c++/src/connect/ncbi_uv_nghttp2.cpp | 22 ++++++++++++++++-
+ 3 files changed, 63 insertions(+), 5 deletions(-)
+
+--- a/c++/src/connect/ncbi_mbedtls.c
++++ b/c++/src/connect/ncbi_mbedtls.c
+@@ -52,6 +52,7 @@
+ #    include <mbedtls/ssl.h>
+ #    include <mbedtls/threading.h>
+ #    include <mbedtls/version.h>
++#    include <psa/crypto.h>
+ 
+ #  if   defined(ENOTSUP)
+ #    define NCBI_NOTSUPPORTED  ENOTSUP
+@@ -101,7 +102,11 @@ static int mbtls_user_mutex_lock(MT_LOCK
+     if (lock) {
+         switch (MT_LOCK_Do(*lock, eMT_Lock)) {
+         case -1:
++#ifdef MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE
+             return MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE;
++#else
++            return MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED;
++#endif
+         case  0:
+             return MBEDTLS_ERR_THREADING_MUTEX_ERROR;
+         case  1:
+@@ -117,7 +122,11 @@ static int mbtls_user_mutex_unlock(MT_LO
+     if (lock) {
+         switch (MT_LOCK_Do(*lock, eMT_Unlock)) {
+         case -1:
++#ifdef MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE
+             return MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE;
++#else
++            return MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED;
++#endif
+         case  0:
+             return MBEDTLS_ERR_THREADING_MUTEX_ERROR;
+         case  1:
+@@ -214,7 +223,11 @@ static EIO_Status x_ErrorToStatus(int er
+ 
+     if (!error)
+         return eIO_Success;
++#if MBEDTLS_VERSION_MAJOR >= 3
++    sock = ((SNcbiSSLctx*)(session->MBEDTLS_PRIVATE(p_bio)))->sock;
++#else
+     sock = ((SNcbiSSLctx*)(session->p_bio))->sock;
++#endif
+     switch (error) {
+     case MBEDTLS_ERR_SSL_WANT_READ:
+         status = x_RetryStatus(sock, direction);
+@@ -225,11 +238,20 @@ static EIO_Status x_ErrorToStatus(int er
+     case MBEDTLS_ERR_SSL_TIMEOUT:
+         status = eIO_Timeout;
+         break;
++#ifdef MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE
+     case MBEDTLS_ERR_THREADING_FEATURE_UNAVAILABLE:
++#endif
++#ifdef MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE
+     case MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE:
++#endif
+     case MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE:
++#ifdef MBEDTLS_ERR_SSL_UNKNOWN_CIPHER
+     case MBEDTLS_ERR_SSL_UNKNOWN_CIPHER:
++#endif
+     case MBEDTLS_ERR_SSL_INTERNAL_ERROR:
++#ifdef MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED
++    case MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED:
++#endif
+         status = eIO_NotSupported;
+         break;
+     case MBEDTLS_ERR_THREADING_BAD_INPUT_DATA:
+@@ -574,8 +596,8 @@ static EIO_Status x_MbedTlsWrite(void* s
+ static EIO_Status s_MbedTlsWrite(void* session, const void* data,
+                                  size_t n_todo, size_t* n_done, int* error)
+ {
+-    size_t max_size
+-        = mbedtls_ssl_get_output_max_frag_len((mbedtls_ssl_context*) session);
++    size_t max_size = mbedtls_ssl_get_max_out_record_payload
++        ((mbedtls_ssl_context*) session);
+     EIO_Status status;
+ 
+     *n_done = 0;
+@@ -714,6 +736,7 @@ static EIO_Status s_MbedTlsInit(FSSLPull
+     char version[80];
+     const char* val;
+     char buf[32];
++    psa_status_t psa_status;
+ 
+     mbedtls_version_get_string(version);
+     if (strcasecmp(MBEDTLS_VERSION_STRING, version) != 0) {
+@@ -734,6 +757,11 @@ static EIO_Status s_MbedTlsInit(FSSLPull
+                                 MBEDTLS_SSL_TRANSPORT_STREAM,
+                                 MBEDTLS_SSL_PRESET_DEFAULT);
+     mbedtls_ssl_conf_authmode(&s_MbedTlsConf, MBEDTLS_SSL_VERIFY_NONE);
++#if MBEDTLS_VERSION_MAJOR >= 3
++    /* The above line can otherwise be ineffective. */
++    mbedtls_ssl_conf_max_tls_version(&s_MbedTlsConf,
++                                     MBEDTLS_SSL_VERSION_TLS1_2);
++#endif
+ 
+     /* Check CONN_[MBED]TLS_LOGLEVEL or [CONN][MBED]TLS_LOGLEVEL */
+     val = ConnNetInfo_GetValueInternal(0, "MBED" REG_CONN_TLS_LOGLEVEL,
+@@ -781,6 +809,12 @@ static EIO_Status s_MbedTlsInit(FSSLPull
+     mbedtls_ssl_conf_rng(&s_MbedTlsConf,
+                          mbedtls_ctr_drbg_random, &s_MbedTlsCtrDrbg);
+ 
++    if ((psa_status = psa_crypto_init()) != PSA_SUCCESS) {
++        CORE_LOGF_X(51, eLOG_Error,
++                    ("psa_crypto_init failed with status %d", psa_status));
++        return eIO_NotSupported;
++    }
++
+     s_Pull = pull;
+     s_Push = push;
+ 
+@@ -957,7 +991,11 @@ NCBI_CRED NcbiCreateMbedTlsCertCredentia
+ 
+     err = mbedtls_pk_parse_key(xcred->pkey,
+                                (const unsigned char*) pkey, pkeysz ? pkeysz
+-                               : strlen((const char*) pkey) + 1, 0, 0);
++                               : strlen((const char*) pkey) + 1, 0, 0
++#if MBEDTLS_VERSION_MAJOR >= 3
++                               , mbedtls_ctr_drbg_random, &s_MbedTlsCtrDrbg
++#endif
++                               );
+     if (err) {
+         mbedtls_strerror(err, errbuf, sizeof(errbuf) - 1);
+         CORE_LOG_ERRNO_EXX(12, eLOG_Error, err, errbuf,
+--- a/c++/src/connect/ncbi_priv.h
++++ b/c++/src/connect/ncbi_priv.h
+@@ -101,7 +101,7 @@ NCBI_C_DEFINE_ERRCODE_X(Connect_SMTP,
+ NCBI_C_DEFINE_ERRCODE_X(Connect_HTTP,          307,  26);
+ NCBI_C_DEFINE_ERRCODE_X(Connect_Service,       308,  10);
+ NCBI_C_DEFINE_ERRCODE_X(Connect_HeapMgr,       309,  34);
+-NCBI_C_DEFINE_ERRCODE_X(Connect_TLS,           310,  50);
++NCBI_C_DEFINE_ERRCODE_X(Connect_TLS,           310,  51);
+ NCBI_C_DEFINE_ERRCODE_X(Connect_Mghbn,         311,  16);
+ NCBI_C_DEFINE_ERRCODE_X(Connect_Crypt,         312,   5);
+ NCBI_C_DEFINE_ERRCODE_X(Connect_LocalIP,       313,   5);
+--- a/c++/src/connect/ncbi_uv_nghttp2.cpp
++++ b/c++/src/connect/ncbi_uv_nghttp2.cpp
+@@ -40,6 +40,8 @@
+ #include <corelib/ncbiapp.hpp>
+ #include <corelib/request_ctx.hpp>
+ 
++#include <psa/crypto.h>
++
+ BEGIN_NCBI_SCOPE
+ 
+ #define NCBI_UV_WRITE_TRACE(message)        _TRACE(message)
+@@ -701,6 +703,10 @@ SUvNgHttp2_TlsImpl::SUvNgHttp2_TlsImpl(c
+     }
+ 
+     mbedtls_ssl_conf_authmode(&m_Conf, MBEDTLS_SSL_VERIFY_NONE);
++#if MBEDTLS_VERSION_MAJOR >= 3
++    /* The above line can otherwise be ineffective. */
++    mbedtls_ssl_conf_max_tls_version(&m_Conf, MBEDTLS_SSL_VERSION_TLS1_2);
++#endif
+     mbedtls_entropy_init(&m_Entropy);
+     mbedtls_ctr_drbg_init(&m_CtrDrbg);
+     mbedtls_x509_crt_init(&m_Cert);
+@@ -714,6 +720,14 @@ SUvNgHttp2_TlsImpl::SUvNgHttp2_TlsImpl(c
+     }
+ 
+     mbedtls_ssl_conf_rng(&m_Conf, mbedtls_ctr_drbg_random, &m_CtrDrbg);
++    auto p_rv = psa_crypto_init();
++
++    if (p_rv != PSA_SUCCESS) {
++        NCBI_UVNGHTTP2_TLS_TRACE(this << " psa_crypto_init: error code"
++                                 << p_rv);
++        return;
++    }
++
+     mbedtls_ssl_conf_alpn_protocols(&m_Conf, m_Protocols.data());
+     mbedtls_ssl_init(&m_Ssl);
+ 
+@@ -748,7 +762,13 @@ SUvNgHttp2_TlsImpl::SUvNgHttp2_TlsImpl(c
+         return;
+     }
+ 
+-    auto pk_rv = mbedtls_pk_parse_key(&m_Pkey, reinterpret_cast<const unsigned char*>(pkey.data()), pkey.size() + 1, nullptr, 0);
++    auto pk_rv = mbedtls_pk_parse_key(
++        &m_Pkey, reinterpret_cast<const unsigned char*>(pkey.data()),
++        pkey.size() + 1, nullptr, 0
++#if MBEDTLS_VERSION_MAJOR >= 3
++        , mbedtls_ctr_drbg_random, &m_CtrDrbg
++#endif
++        );
+ 
+     if (pk_rv) {
+         NCBI_UVNGHTTP2_TLS_TRACE(this << " mbedtls_pk_parse_key: " << SUvNgHttp2_Error::MbedTlsStr(pk_rv));

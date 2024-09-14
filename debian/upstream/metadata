@@ -1,0 +1,9 @@
+Registry:
+ - Name: OMICtools
+   Entry: OMICS_01436
+ - Name: SciCrunch
+   Entry: SCR_004870
+ - Name: bio.tools
+   Entry: blast
+ - Name: conda:bioconda
+   Entry: blast

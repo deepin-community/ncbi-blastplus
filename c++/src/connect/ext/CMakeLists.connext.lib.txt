@@ -1,0 +1,9 @@
+# $Id: CMakeLists.connext.lib.txt 667383 2023-05-15 15:28:24Z gouriano $
+
+NCBI_begin_lib(connext)
+  NCBI_sources(${CONNEXT_SRC_C})
+  NCBI_optional_components(NCBICRYPT)
+  NCBI_uses_toolkit_libraries(connect)
+  NCBI_project_tags(mod_loadinfo mod_caf)
+  NCBI_project_watchers(lavr)
+NCBI_end_lib()

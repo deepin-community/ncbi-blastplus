@@ -1,0 +1,4 @@
+# $Id: Makefile.blast_unit_test.app.unix 666071 2023-04-19 19:32:43Z ucko $
+# Avoid ODR violations caught by GCC 12's sanitizer.
+BLAST_LIBS  := $(filter-out submit,$(BLAST_LIBS))
+OBJMGR_LIBS := $(OBJMGR_LIBS:dbapi_driver=dbapi_driver$(DLL))

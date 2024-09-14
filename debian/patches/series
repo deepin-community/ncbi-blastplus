@@ -1,0 +1,23 @@
+system_mbedtls_only
+support_mbedtls3
+allow_pcre2
+optin_usage_report
+enable_clean_after_failed_compile
+hurd_fixes
+legacy_rename_rpsblast
+fix_lib_deps
+no_multiarch_rpath
+use_pie_for_apps
+skip_services_unit_test
+fix_configure
+support_x32
+suppress_tls_version_checks
+optionally_keep_sequence
+fix_unit_tests
+# reprobuild
+spelling
+support_gcc10
+run_perl_directly
+tune_lmdb_defaults
+2to3
+big_endian_workaround
