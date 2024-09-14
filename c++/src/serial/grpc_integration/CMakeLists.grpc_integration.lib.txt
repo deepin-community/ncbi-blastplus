@@ -1,0 +1,8 @@
+# $Id: CMakeLists.grpc_integration.lib.txt 669764 2023-07-10 18:00:26Z ivanov $
+
+NCBI_begin_lib(grpc_integration STATIC)
+  NCBI_sources(grpc_integration)
+  NCBI_uses_toolkit_libraries(xutil)
+  NCBI_optional_components(connext)
+  NCBI_requires(Z)
+NCBI_end_lib()

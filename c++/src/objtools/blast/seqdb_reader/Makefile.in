@@ -1,0 +1,12 @@
+# $Id: Makefile.in 673642 2023-10-05 19:23:19Z ivanov $
+
+# Meta-makefile("SEQDB" project)
+#################################
+
+LIB_PROJ = seqdb
+SUB_PROJ = demo test
+
+REQUIRES = SQLITE3
+
+srcdir = @srcdir@
+include @builddir@/Makefile.meta

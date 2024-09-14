@@ -1,0 +1,16 @@
+Subject: remove network required test
+Author: Tim Booth
+Forwarded: no
+Description: test require internet connection
+Last-Updated: 2013-06-01
+--- a/c++/src/objtools/blast/services/unit_test/Makefile.blast_services_unit_test.app
++++ b/c++/src/objtools/blast/services/unit_test/Makefile.blast_services_unit_test.app
+@@ -12,6 +12,7 @@ LIB = test_boost blast_services xnetblas
+ LIBS = $(BLAST_THIRD_PARTY_LIBS) $(NETWORK_LIBS) $(CMPRS_LIBS) $(DL_LIBS) \
+        $(ORIG_LIBS)
+ 
+-CHECK_CMD = blast_services_unit_test
++# This test requires an internet connection, shouldn't be run on a build server
++# CHECK_CMD = blast_services_unit_test
+ 
+ WATCHERS = madden camacho

@@ -1,0 +1,9 @@
+blast+ for Debian
+---------------------
+
+Lintian raises  hardening no fortify warnings that are false positives.
+
+
+Test examples taken from http://www.ncbi.nlm.nih.gov/books/NBK52640/
+
+-- Canberk Koç <canberkkoc@gmail.com> Tue, 2 Aug 2016 03:30:33 +0300

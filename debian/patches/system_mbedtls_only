@@ -1,0 +1,76 @@
+Author: Aaron M. Ucko <amu@ucko.debian.net>
+Date:   Wed, 01 Dec 2021 23:33:11 -0500
+Subject: Omit convenience mbed TLS copy
+--- a/c++/src/connect/Makefile.connssl.lib
++++ b/c++/src/connect/Makefile.connssl.lib
+@@ -1,8 +1,10 @@
+ # $Id: Makefile.connssl.lib 642488 2021-12-20 21:00:34Z ucko $
+ 
+-CPPFLAGS = $(TLS_INCLUDE) -I$(srcdir)/mbedtls $(ORIG_CPPFLAGS)
++CPPFLAGS = $(TLS_INCLUDE) $(ORIG_CPPFLAGS)
+ 
+-SRC_TLS  = ncbi_gnutls ncbi_mbedtls ncbi_tls \
++SRC_TLS  = ncbi_gnutls ncbi_mbedtls ncbi_tls
++
++SRC_MBEDTLS_UNUSED = \
+            mbedtls/aes mbedtls/aesni mbedtls/arc4 mbedtls/aria \
+            mbedtls/asn1parse mbedtls/asn1write mbedtls/base64 mbedtls/bignum \
+            mbedtls/blowfish mbedtls/camellia mbedtls/ccm mbedtls/chacha20 \
+--- a/c++/src/connect/connect_misc_impl.hpp
++++ b/c++/src/connect/connect_misc_impl.hpp
+@@ -30,11 +30,10 @@
+  *
+  */
+ 
+-#include "mbedtls/mbedtls/ncbicxx_rename_mbedtls.h"
+-#include "mbedtls/mbedtls/error.h"
+-#include "mbedtls/mbedtls/ctr_drbg.h"
+-#include "mbedtls/mbedtls/entropy.h"
+-#include "mbedtls/mbedtls/ssl.h"
++#include <mbedtls/error.h>
++#include <mbedtls/ctr_drbg.h>
++#include <mbedtls/entropy.h>
++#include <mbedtls/ssl.h>
+ 
+ #include <corelib/ncbimisc.hpp>
+ 
+--- a/c++/src/connect/ncbi_mbedtls.c
++++ b/c++/src/connect/ncbi_mbedtls.c
+@@ -43,7 +43,6 @@
+ 
+ #if defined(HAVE_LIBMBEDTLS)  ||  defined(NCBI_CXX_TOOLKIT)
+ 
+-#  ifdef HAVE_LIBMBEDTLS  /* external */
+ #    include <mbedtls/ctr_drbg.h>
+ #    include <mbedtls/debug.h>
+ #    include <mbedtls/entropy.h>
+@@ -53,17 +52,6 @@
+ #    include <mbedtls/ssl.h>
+ #    include <mbedtls/threading.h>
+ #    include <mbedtls/version.h>
+-#  else                   /* embedded */
+-#    include "mbedtls/mbedtls/ctr_drbg.h"
+-#    include "mbedtls/mbedtls/debug.h"
+-#    include "mbedtls/mbedtls/entropy.h"
+-#    include "mbedtls/mbedtls/error.h"
+-#    include "mbedtls/mbedtls/pk.h"
+-#    include "mbedtls/mbedtls/net_sockets.h"
+-#    include "mbedtls/mbedtls/ssl.h"
+-#    include "mbedtls/mbedtls/threading.h"
+-#    include "mbedtls/mbedtls/version.h"
+-#  endif /*HAVE_LIBMBEDTLS*/
+ 
+ #  if   defined(ENOTSUP)
+ #    define NCBI_NOTSUPPORTED  ENOTSUP
+--- a/c++/src/connect/Makefile.xxconnect2.lib
++++ b/c++/src/connect/Makefile.xxconnect2.lib
+@@ -9,8 +9,7 @@ REQUIRES = LIBUV NGHTTP2
+ LIB_OR_DLL = both
+ DLL_LIB = xconnect
+ 
+-CPPFLAGS = $(LIBUV_INCLUDE) $(NGHTTP2_INCLUDE) $(TLS_INCLUDE) \
+-           -I$(srcdir)/mbedtls $(ORIG_CPPFLAGS)
++CPPFLAGS = $(LIBUV_INCLUDE) $(NGHTTP2_INCLUDE) $(TLS_INCLUDE) $(ORIG_CPPFLAGS)
+ 
+ LIBS = $(XXCONNECT2_LIBS) $(ORIG_LIBS)
+ 

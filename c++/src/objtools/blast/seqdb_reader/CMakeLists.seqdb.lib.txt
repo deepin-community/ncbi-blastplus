@@ -1,0 +1,38 @@
+# $Id: CMakeLists.seqdb.lib.txt 673642 2023-10-05 19:23:19Z ivanov $
+
+if (HAVE_LIBLMDB)
+    set(lmdbsrc seqdb_lmdb)
+endif()
+
+NCBI_begin_lib(seqdb)
+  NCBI_sources(
+    seqdb
+    seqdbbitset
+    seqdbfilter
+    seqdbatlas
+    seqdbalias
+    seqdbcommon
+    seqdbfile
+    seqdbimpl
+    seqdbvol
+    seqdbvolset
+    seqdboidlist
+    seqdbisam
+    seqdbtax
+    seqdbgilistset
+    seqdbexpert
+    seqdbblob
+    seqdbcol
+    seqdbgimask
+    seqdbobj
+    ${lmdbsrc}
+    seqdblmdbset
+    seqidlist_reader
+    tax4blastsqlite
+  )
+  NCBI_add_definitions(NCBI_MODULE=BLASTDB)
+  NCBI_requires(LMDB SQLITE3)
+  NCBI_uses_toolkit_libraries(blastdb xobjmgr)
+  NCBI_project_watchers(camacho fongah2)
+NCBI_end_lib()
+

@@ -1,15 +1,60 @@
-Source: template-repository
-Section: unknown
+Source: ncbi-blast+
+Maintainer: Debian Med Packaging Team <debian-med-packaging@lists.alioth.debian.org>
+Uploaders: Olivier Sallou <osallou@debian.org>,
+           Andreas Tille <tille@debian.org>,
+           Aaron M. Ucko <ucko@debian.org>
+Section: science
 Priority: optional
-Maintainer: Tsic404 <liuheng@deepin.org>
-Build-Depends: debhelper (>= 11)
-Standards-Version: 4.1.3
-Homepage: https://github.com/deepin-community/template-repository
-#Vcs-Browser: https://salsa.debian.org/debian/deepin-community-template-repository
-#Vcs-Git: https://salsa.debian.org/debian/deepin-community-template-repository.git
+Build-Depends: debhelper-compat (= 13),
+               autoconf2.69
+Build-Depends-Arch: libboost-test-dev,
+                    libbz2-dev,
+                    libc-dev-bin,
+                    libgnutls28-dev,
+                    liblmdb-dev,
+                    libmbedtls-dev,
+                    libnghttp2-dev,
+                    libpcre2-dev,
+                    libsqlite3-dev,
+                    libuv1-dev,
+                    time,
+                    zlib1g-dev,
+                    procps
+Standards-Version: 4.7.0
+Vcs-Browser: https://salsa.debian.org/med-team/ncbi-blastplus
+Vcs-Git: https://salsa.debian.org/med-team/ncbi-blastplus.git
+Homepage: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/
+Rules-Requires-Root: no
 
-Package: template-repository
+Package: ncbi-blast+
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Multi-Arch: foreign
+Depends: ncbi-data,
+         python3,
+         ${misc:Depends},
+         ${perl:Depends},
+         ${shlibs:Depends}
+Enhances: t-coffee
+Description: next generation suite of BLAST sequence search tools
+ The Basic Local Alignment Search Tool (BLAST) is the most widely
+ used sequence similarity tool. There are versions of BLAST that
+ compare protein queries to protein databases, nucleotide queries
+ to nucleotide databases, as well as versions that translate nucleotide
+ queries or databases in all six frames and compare to protein databases
+ or queries.
+ PSI-BLAST produces a position-specific-scoring-matrix (PSSM) starting
+ with a protein query, and then uses that PSSM to perform further searches.
+ It is also possible to compare a protein or nucleotide query to a
+ database of PSSM’s.
+ The NCBI supports a BLAST web page at blast.ncbi.nlm.nih.gov as well as
+ a network service.
+
+Package: ncbi-blast+-legacy
+Architecture: all
+Multi-Arch: foreign
+Depends: ncbi-blast+,
+         ${misc:Depends}
+Description: NCBI Blast legacy call script
+ This package adds some fake scripts to call NCBI+ programs
+ with the NCBI blast command line. It makes use of the
+ legacy_blast script in ncbi-blast+ package.

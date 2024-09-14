@@ -1,0 +1,10 @@
+blast+ for Debian
+---------------------
+
+ This package does not include the documentation of the software. Documentation is available online.
+ Detail is available:  man ncbi-blast+
+ Package does  not include test binaries nor datatool and projet_tree_builder from upstream.
+ Those binaries are indeed for internal upstream use, and are of no use nor related to blast+ tool itself
+ (see Bug #642991 discussion with upstream answers)
+
+ -- Olivier Sallou <osallou@irisa.fr>  Wed, 27 Apr 2011 15:19:59 +0200

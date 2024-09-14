@@ -1,0 +1,33 @@
+.TH ncbi-blast+ 1  "April 29, 2011" "version 2.2.25" "USER COMMANDS"
+.SH NAME
+ncbi-blast+ \- NCBI command tools for BLAST+
+.SH ONELINE DOCUMENTATION
+.B BLAST+ documentation is available online at http://www.ncbi.nlm.nih.gov/books/NBK1763/
+.PP
+.SH DESCRIPTION
+The NCBI BLAST+ is a group of tools for basic alignment search. BLAST+
+ is a rewrite of BLAST with new features and performance improvements.
+BLAST+ commands differ from original BLAST. For BLAST users, one should read
+ the BLAST USERS paragraph.
+.PP
+.SH CONFIGURATION
+BLAST+ uses the BLASTDB environment variable to get default db directory.
+It is possible to update the file /etc/ncbi/.ncbirc to add the following:
+.B [BLAST]
+.B BLASTDB=/var/lib/ncbi-blast+/db
+.SH BLAST USERS
+The easiest way to get started using these command line applications is
+ by means of the legacy_blast.pl PERL script which is bundled along with
+ the BLAST+ applications.
+To utilize this script, simply prefix it to the invocation of the C toolkit
+ BLAST command line application and append the --path option pointing to the 
+installation directory of the BLAST+ applications. For example, instead of using
+
+.B blastall -i query -d nr -o blast.out 
+use
+.B legacy_blast.pl blastall -i query -d nr -o blast.out --path /usr/bin
+
+.PP
+.SH AUTHOR
+Olivier Sallou (olivier.sallou (at) irisa.fr) - Man page and packaging
+NCBI - BLAST+

@@ -1,0 +1,14 @@
+--- a/c++/include/objtools/blast/seqdb_writer/writedb_lmdb.hpp
++++ b/c++/include/objtools/blast/seqdb_writer/writedb_lmdb.hpp
+@@ -52,7 +52,11 @@ BEGIN_NCBI_SCOPE
+ #define DEFAULT_LMDB_MAP_SIZE 500000
+ #define DEFAULT_TAXID_MAP_SIZE 500000
+ #else
++#ifdef __mips__
++#define DEFAULT_LMDB_MAP_SIZE (640 * 1024 * 1024)
++#else
+ #define DEFAULT_LMDB_MAP_SIZE 700000000
++#endif
+ #define DEFAULT_TAXID_MAP_SIZE 300000000
+ #endif
+ 

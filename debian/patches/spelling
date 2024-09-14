@@ -1,0 +1,185 @@
+From: Michael R. Crusoe <michael.crusoe@gmail.com>
+Subject: Spelling fixes
+--- a/c++/include/objtools/alnmgr/seqids_extractor.hpp
++++ b/c++/include/objtools/alnmgr/seqids_extractor.hpp
+@@ -232,7 +232,7 @@ public:
+                         else if (*id_vec[i] != *id) {
+                             string err("Inconsistent Seq-ids found in seg ");
+                             err += NStr::NumericToString(i) +
+-                                ".  Excpected " + id_vec[i]->AsString() +
++                                ".  Expected " + id_vec[i]->AsString() +
+                                 ", encountered " + id->AsString() + ".";
+                             NCBI_THROW(CAlnException, eInvalidSeqId, err);
+                         }
+--- a/c++/src/algo/winmask/seq_masker_ostat_factory.cpp
++++ b/c++/src/algo/winmask/seq_masker_ostat_factory.cpp
+@@ -75,7 +75,7 @@ CSeqMaskerOstat * CSeqMaskerOstatFactory
+         }
+         else NCBI_THROW( CSeqMaskerOstatFactoryException,
+                          eBadName,
+-                         "unkown unit counts format" );
++                         "unknown unit counts format" );
+     }
+     catch( CException & e ) {
+         NCBI_RETHROW( e, CSeqMaskerOstatFactoryException, eCreateFail,
+@@ -113,7 +113,7 @@ CSeqMaskerOstat * CSeqMaskerOstatFactory
+         }
+         else NCBI_THROW( CSeqMaskerOstatFactoryException,
+                          eBadName,
+-                         "unkown unit counts format" );
++                         "unknown unit counts format" );
+     }
+     catch( CException & e ) {
+         NCBI_RETHROW( e, CSeqMaskerOstatFactoryException, eCreateFail,
+--- a/c++/src/app/blastdb/blastdbcheck.cpp
++++ b/c++/src/app/blastdb/blastdbcheck.cpp
+@@ -245,7 +245,7 @@ void CBlastDbCheckApplication::Init(void
+          "Require that all sequences in the database have taxid set.");
+ 
+     arg_desc->AddFlag
+-        ("cdd_delta", "Do aditional tests for a CDD database for DELTA-BLAST");
++        ("cdd_delta", "Do additional tests for a CDD database for DELTA-BLAST");
+ 
+     // Setup arg.descriptions for this application
+     SetupArgDescriptions(arg_desc.release());
+--- a/c++/src/app/blastdb/makeprofiledb.cpp
++++ b/c++/src/app/blastdb/makeprofiledb.cpp
+@@ -1838,7 +1838,7 @@ bool CMakeProfileDBApp::x_CheckDelta( co
+     if( !x_ValidateCd(freqs, obsr, BLASTAA_SIZE) && m_ExcludeInvalid)
+     {
+     	*m_LogFile << filename +
+-    			" was excluded: it conatins an invalid CD \n";
++    			" was excluded: it contains an invalid CD \n";
+     	return false;
+     }
+     return true;
+--- a/c++/src/objects/seqalign/Dense_seg.cpp
++++ b/c++/src/objects/seqalign/Dense_seg.cpp
+@@ -980,7 +980,7 @@ void CDense_seg::RemapToLoc(TDim row, co
+             if (loc_plus != (seq_loc_i.GetStrand() != eNa_strand_minus)) {
+                 NCBI_THROW(CSeqalignException, eInvalidInputData,
+                            "CDense_seg::RemapToLoc():"
+-                           " The strand should be the same accross"
++                           " The strand should be the same across"
+                            " the input seq-loc");
+             }
+         }
+--- a/c++/src/objects/seqalign/Seq_align.cpp
++++ b/c++/src/objects/seqalign/Seq_align.cpp
+@@ -872,7 +872,7 @@ CSeq_align::CreateDensegFromStdseg(SSeqI
+         if (dim != ss.GetDim()  ||  row != dim) {
+             NCBI_THROW(CSeqalignException, eInvalidInputAlignment,
+                        "CreateDensegFromStdseg(): "
+-                       "Inconsistent dimentions!");
++                       "Inconsistent dimensions!");
+         }
+ 
+         if (widths_determined[seg]) {
+--- a/c++/src/objects/seqfeat/institution_codes.inc
++++ b/c++/src/objects/seqfeat/institution_codes.inc
+@@ -791,7 +791,7 @@ static const char* const kInstitutionCol
+ "BPPT-ESC\tc\tBPPT Ethanol-Single Cell Protein-Fructose Syrup Technical Unit\t\t\t",
+ "BPU\ts\tEoetvoes Lorand University, Department of Plant Taxonomy and Ecology\t\t\t",
+ "BR<BEL>\ts\tBotanic Garden Meise\t\t\t",
+-"BR<BRA>\tc\tJohanna Dobereiner Biological Resouce Center (CRB-JD)\t\t\t",
++"BR<BRA>\tc\tJohanna Dobereiner Biological Resource Center (CRB-JD)\t\t\t",
+ "BRA\ts\tSlovak National Museum, Botany Department\t\t\t",
+ "BRAD\ts\tUniversity of Bradford, Biology Department\t\t\t",
+ "BRB\ts\tBrassica Resource Bank\t\t\t",
+--- a/c++/src/objects/seqfeat/institution_codes.txt
++++ b/c++/src/objects/seqfeat/institution_codes.txt
+@@ -755,7 +755,7 @@ BPM	s	Beipiao Paleontological Museum
+ BPPT-ESC	c	BPPT Ethanol-Single Cell Protein-Fructose Syrup Technical Unit			
+ BPU	s	Eoetvoes Lorand University, Department of Plant Taxonomy and Ecology			
+ BR<BEL>	s	Botanic Garden Meise			
+-BR<BRA>	c	Johanna Dobereiner Biological Resouce Center (CRB-JD)			
++BR<BRA>	c	Johanna Dobereiner Biological Resource Center (CRB-JD)			
+ BRA	s	Slovak National Museum, Botany Department			
+ BRAD	s	University of Bradford, Biology Department			
+ BRB	s	Brassica Resource Bank			
+--- a/c++/src/objmgr/util/sequence.cpp
++++ b/c++/src/objmgr/util/sequence.cpp
+@@ -385,7 +385,7 @@ string GetProteinName(const CBioseq_Hand
+     if ( best_feats.empty() ) {
+         NCBI_THROW_FMT(CObjMgrException, eFindFailed,
+                        "GetProteinName("<<GetId(seq, eGetId_Best)<<"): "
+-                       "the sequence does't have prot feature");
++                       "the sequence doesn't have prot feature");
+     }
+     if ( best_feats.size() > 1 ) {
+         NCBI_THROW_FMT(CObjMgrException, eFindConflict,
+--- a/c++/src/objtools/align_format/taxFormat.cpp
++++ b/c++/src/objtools/align_format/taxFormat.cpp
+@@ -616,7 +616,7 @@ void CTaxFormat::x_LoadTaxTree(void)
+             }            
+         }
+         if (!tax_load_ok) {
+-            NCBI_THROW(CException, eUnknown,"Taxonomic load was not successfull.");
++            NCBI_THROW(CException, eUnknown,"Taxonomic load was not successful.");
+         }
+         m_TaxTreeLoaded = true;
+             
+--- a/c++/src/objtools/format/flat_file_config.cpp
++++ b/c++/src/objtools/format/flat_file_config.cpp
+@@ -655,7 +655,7 @@ void CFlatFileConfig::AddArgumentDescrip
+ 
+          // from
+          arg_desc->AddOptionalKey("from", "From",
+-                                  "Begining of shown range", CArgDescriptions::eInteger);
++                                  "Beginning of shown range", CArgDescriptions::eInteger);
+ 
+          // to
+          arg_desc->AddOptionalKey("to", "To",
+--- a/c++/src/objtools/readers/agp_converter.cpp
++++ b/c++/src/objtools/readers/agp_converter.cpp
+@@ -728,7 +728,7 @@ void CAgpConverter::x_SetUpObjectOpening
+         submit_block_writer.WriteObject(m_pSubmitBlock.GetPointer(), m_pSubmitBlock->GetThisTypeInfo());
+         submit_block_writer.Flush();
+         seq_sub_header_strm << "," << endl;
+-        seq_sub_header_strm << "data entrys {" << endl;
++        seq_sub_header_strm << "data entries {" << endl;
+ 
+         out_sObjectOpeningString = seq_sub_header_strm.str();
+         out_sObjectClosingString = "} }" + out_sObjectClosingString;
+--- a/c++/src/objtools/readers/agp_util.cpp
++++ b/c++/src/objtools/readers/agp_util.cpp
+@@ -173,7 +173,7 @@ const CAgpErr::TStr CAgpErr::s_msg[]= {
+ 
+     "object_beg != previous object_end + 1",
+     "no valid AGP lines",
+-    "consequtive gaps lines with the same type and linkage",
++    "consecutive gaps lines with the same type and linkage",
+     "in \"Scaffold from component\" file, invalid scaffold-breaking gap",
+     "in \"Chromosome from scaffold\" file, invalid \"within-scaffold\" gap",
+ 
+@@ -193,7 +193,7 @@ const CAgpErr::TStr CAgpErr::s_msg[]= {
+     // Content Warnings
+     "gap at the end of object (OK if X is the circular chromosome/plasmid)",
+     "gap at the beginning of object ",
+-    "two consequtive gap lines (e.g. a gap at the end of "
++    "two consecutive gap lines (e.g. a gap at the end of "
+         "a scaffold, two non scaffold-breaking gaps, ...)",
+     "no components in object",
+     "the span overlaps a previous span for this component",
+--- a/c++/src/objtools/readers/agp_validate_reader.cpp
++++ b/c++/src/objtools/readers/agp_validate_reader.cpp
+@@ -300,7 +300,7 @@ void CAgpValidateReader::OnGapOrComponen
+       int prev_comp_file=spans.rbegin()->file_num;
+       int prev_comp_line=spans.rbegin()->line_num;
+       if(prev_comp_file < m_last_scaf_start_file || prev_comp_line < m_last_scaf_start_line) {
+-        sameComId_otherScaf="; previous occurance at ";
++        sameComId_otherScaf="; previous occurrence at ";
+         if(prev_comp_file && prev_comp_file!=m_AgpErr->GetFileNum()) {
+           sameComId_otherScaf += m_AgpErr->GetFile(prev_comp_file);
+           sameComId_otherScaf += ":";
+--- a/c++/src/util/compress/api/compress.cpp
++++ b/c++/src/util/compress/api/compress.cpp
+@@ -165,7 +165,7 @@ bool CCompression::x_DecompressFile(CCom
+     while ( (nread = src_file.Read(buf.get(), file_io_bufsize)) > 0 ) {
+         os.write(buf.get(), nread);
+         if ( !os.good() ) {
+-            SetError(-1, "Error writing to ouput file");
++            SetError(-1, "Error writing to output file");
+             return false;
+         }
+     }

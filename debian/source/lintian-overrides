@@ -1,0 +1,6 @@
+# Line length detection, nothing missing in source js files
+ncbi-blast+ source: source-is-missing *c++/src/html/ncbi_menu.js*
+ncbi-blast+ source: source-is-missing *c++/src/html/ncbi_menu_dnd.js*
+ncbi-blast+ source: source-is-missing *c++/src/html/ncbi_menu_dyn.js*
+# JSON not evil license, related code is not present
+ncbi-blast+ source: license-problem-json-evil *c++/include/misc/jsonwrapp/rapidjson11/license.txt*

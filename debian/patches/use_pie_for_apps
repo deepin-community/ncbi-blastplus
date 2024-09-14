@@ -1,0 +1,29 @@
+Subject: build executables with -fPIE, not -fPIC
+
+* -fPIC is only useful for shared libraries; substitute -fPIE (along
+   with -pie at link time) when building executables.
+
+Author: Aaron M. Ucko <ucko@debian.org>
+Last-Update: 2012-05-10
+--- a/c++/src/build-system/Makefile.app.in
++++ b/c++/src/build-system/Makefile.app.in
+@@ -25,8 +25,8 @@ default_rule: all
+ ### C/C++ source file compilation setup
+ 
+ CPPFLAGS     += -DNCBI_APP_BUILT_AS=$(APP)
+-CXXFLAGS_ALL = @f_compile@ $(CXXFLAGS) $(LOCAL_CPPFLAGS) $(CPPFLAGS)
+-CFLAGS_ALL   = @f_compile@ $(CFLAGS) $(LOCAL_CPPFLAGS) $(CPPFLAGS)
++CXXFLAGS_ALL = @f_compile@ $(CXXFLAGS:-fPIC=-fPIE) $(LOCAL_CPPFLAGS) $(CPPFLAGS)
++CFLAGS_ALL   = @f_compile@ $(CFLAGS:-fPIC=-fPIE) $(LOCAL_CPPFLAGS) $(CPPFLAGS)
+ SOURCES      = @UNIX_SRC@ $(SRC)
+ 
+ ### Standard application build rules
+@@ -59,7 +59,7 @@ PROJ_TYPE = app
+ include $(builddir)/Makefile.$(Rules)
+ 
+ CMD_BASE = $(LINK_WRAPPER) $(LINK)
+-CMD_BASEARGS = $(LDFLAGS) $(APP_LDFLAGS) $(XOBJ) $(XOBJ2) $(PRE_LIBS)
++CMD_BASEARGS = $(LDFLAGS) $(APP_LDFLAGS) -fPIE -pie $(XOBJ) $(XOBJ2) $(PRE_LIBS)
+ CMD_TAIL = @f_outexe@$(XAPP) $(LINK_FILTER)
+ CMD_ARGS  = $(CMD_BASEARGS) $(XLIB)  $(XAPP_LIBS)
+ CMD_ARGS2 = $(CMD_BASEARGS) $(XLIB2) $(XAPP_LIBS2)

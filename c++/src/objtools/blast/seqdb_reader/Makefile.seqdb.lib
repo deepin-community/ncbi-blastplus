@@ -1,0 +1,42 @@
+# $Id: Makefile.seqdb.lib 673717 2023-10-06 19:32:31Z ivanov $
+
+ASN_DEP = blastdb
+
+SRC = seqdb \
+seqdbbitset \
+seqdbfilter \
+seqdbatlas \
+seqdbalias \
+seqdbcommon \
+seqdbfile \
+seqdbimpl \
+seqdbvol \
+seqdbvolset \
+seqdboidlist \
+seqdbisam \
+seqdbtax \
+seqdbgilistset \
+seqdbexpert \
+seqdbblob \
+seqdbcol \
+seqdbgimask \
+seqdbobj \
+seqdb_lmdb \
+seqdblmdbset \
+seqidlist_reader \
+tax4blastsqlite
+
+LIB = seqdb
+DLL_LIB = blastdb $(SOBJMGR_LIBS) $(LMDB_LIB) sqlitewrapp
+LIBS = $(BLAST_THIRD_PARTY_LIBS)
+
+CFLAGS   = $(FAST_CFLAGS)
+CPPFLAGS = -DNCBI_MODULE=BLASTDB $(SQLITE3_INCLUDE) $(ORIG_CPPFLAGS) $(BLAST_THIRD_PARTY_INCLUDE) 
+CXXFLAGS = $(FAST_CXXFLAGS)
+LDFLAGS  = $(FAST_LDFLAGS)
+
+WATCHERS = camacho fongah2
+
+
+USES_LIBRARIES =  \
+    $(DL_LIBS) $(SOBJMGR_LIBS) blastdb sqlitewrapp

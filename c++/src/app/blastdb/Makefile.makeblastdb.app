@@ -1,0 +1,18 @@
+# $Id: Makefile.makeblastdb.app 673721 2023-10-06 19:33:05Z ivanov $
+
+WATCHERS = camacho fongah2
+
+APP = makeblastdb
+SRC = makeblastdb masked_range_set
+LIB_ = writedb $(BLAST_INPUT_LIBS) $(BLAST_LIBS) $(OBJMGR_LIBS)
+LIB = $(LIB_:%=%$(STATIC))
+
+CFLAGS   = $(FAST_CFLAGS)
+CXXFLAGS = $(FAST_CXXFLAGS)
+LDFLAGS  = $(FAST_LDFLAGS) 
+
+CPPFLAGS = -DNCBI_MODULE=BLASTDB $(ORIG_CPPFLAGS) $(BLAST_THIRD_PARTY_INCLUDE)
+LIBS = $(BLAST_THIRD_PARTY_LIBS) $(GENBANK_THIRD_PARTY_LIBS) $(CMPRS_LIBS) \
+       $(DL_LIBS) $(NETWORK_LIBS) $(ORIG_LIBS)
+
+REQUIRES = objects -Cygwin

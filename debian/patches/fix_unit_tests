@@ -1,0 +1,16 @@
+Subject: add missing lib for tests
+Description: unit_test need blast lib to compile
+Forwarded: Not-Needed 
+Author: Olivier Sallou <osallou@debian.org>
+Last-Updated: 2018-02-11
+--- a/c++/src/algo/blast/Makefile.blast_macros.mk
++++ b/c++/src/algo/blast/Makefile.blast_macros.mk
+@@ -22,7 +22,7 @@ BLAST_LDEP = utrtprof xalgoblastdbindex
+              xalgodustmask xalgowinmask seqmasks_io seqdb blast_services xalnmgr \
+              xobjutil $(OBJREAD_LIBS) xnetblastcli xnetblast blastdb \
+              sqlitewrapp scoremat tables $(LMDB_LIB)
+-BLAST_LIBS = proteinkmer xblast $(BLAST_LDEP)
++BLAST_LIBS = proteinkmer xblast blast $(BLAST_LDEP)
+ 
+ # BLAST additionally needs xconnect $(SOBJMGR_LIBS) or $(OBJMGR_LIBS)
+ 

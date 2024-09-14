@@ -1,0 +1,6 @@
+# $Id: Makefile.cleanup.lib.unix 654697 2022-08-19 16:39:32Z ucko $
+ifeq "$(COMPILER)-$(DEBUG_SFX)$(DLL)" "icc-Release"
+ ifneq "" "$(filter -static-intel,$(DLL_LDFLAGS))"
+  cleanup_utils.o:  CXXFLAGS += -fno-builtin-strcpy
+ endif
+endif

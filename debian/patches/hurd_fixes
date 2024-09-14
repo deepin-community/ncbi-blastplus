@@ -1,0 +1,53 @@
+Subject: fix portability issues that led to Hurd build failures
+
+* src/build-system/configure(.ac):
+  - Reflect the Hurd's support for -Wl,rpath,... .
+* src/connect/ncbi_socket_cxx.cpp, src/connect/ext/ncbi_localnet.c:
+  cope with missing PATH_MAX everywhere, not just under Windows.
+
+Author: Aaron M. Ucko <ucko@debian.org>
+Last-Update: 2020-09-19
+--- a/c++/src/build-system/configure
++++ b/c++/src/build-system/configure
+@@ -10806,7 +10806,7 @@ if test -z "$CONF_f_runpath" ; then
+       CONF_f_runpath="-R"
+       ;;
+     linux*:[GI]CC | linux*Clang | *bsd*:GCC | *bsd*Clang | cygwin*:GCC \
+-    | osf*:GCC )
++    | osf*:GCC | gnu*:GCC )
+       CONF_f_runpath="-Wl,-rpath,"
+       ;;
+     irix*:* | linux*:KCC | *:Compaq )
+--- a/c++/src/build-system/configure.ac
++++ b/c++/src/build-system/configure.ac
+@@ -2424,7 +2424,7 @@ if test -z "$CONF_f_runpath" ; then
+       CONF_f_runpath="-R"
+       ;;
+     linux*:[[GI]]CC | linux*Clang | *bsd*:GCC | *bsd*Clang | cygwin*:GCC \
+-    | osf*:GCC )
++    | osf*:GCC | gnu*:GCC )
+       CONF_f_runpath="-Wl,-rpath,"
+       ;;
+     irix*:* | linux*:KCC | *:Compaq )
+--- a/c++/src/connect/ncbi_socket_cxx.cpp
++++ b/c++/src/connect/ncbi_socket_cxx.cpp
+@@ -35,7 +35,7 @@
+ #include "ncbi_assert.h"                // no _ASSERT()s, keep clean from xncbi
+ #include <connect/ncbi_socket_unix.hpp>
+ #include <limits.h>                     // for PATH_MAX
+-#if defined(NCBI_OS_MSWIN)  &&  !defined(PATH_MAX)
++#ifndef PATH_MAX
+ #  define PATH_MAX 512                  // will actually use less than 32 chars
+ #endif // NCBI_OS_MSWIN && !PATH_MAX
+ 
+--- a/c++/src/connect/ncbi_localip.c
++++ b/c++/src/connect/ncbi_localip.c
+@@ -67,7 +67,7 @@
+ #  define INADDR_LOOPBACK  0x7F000001
+ #endif /*!INADDR_LOOPBACK*/
+ 
+-#if defined(NCBI_OS_MSWIN)  &&  !defined(PATH_MAX)
++#if /* defined(NCBI_OS_MSWIN)  && */ !defined(PATH_MAX)
+ #  ifdef _MAX_PATH
+ #    define PATH_MAX  _MAX_PATH
+ #else

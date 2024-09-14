@@ -1,0 +1,7 @@
+# $Id: Makefile.efetch.lib 646490 2022-03-08 23:15:04Z grichenk $
+
+ASN_DEP = pubmed medline biblio general
+LIB = efetch
+SRC = efetch__ efetch___
+
+WATCHERS = gotvyans

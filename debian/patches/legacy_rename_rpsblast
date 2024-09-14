@@ -1,0 +1,14 @@
+Author: Olivier Sallou <olivier.sallou@irisa.fr>
+Description: rename binary as blast+ for package coherency.
+Last-Updated: 2011-10-03
+--- a/c++/src/app/blast/legacy_blast.pl
++++ b/c++/src/app/blast/legacy_blast.pl
+@@ -1064,7 +1064,7 @@
+     if (defined $opt_p and $opt_p =~ /f/i) {
+         $retval .= "/rpstblastn";
+     } else {
+-        $retval .= "/rpsblast";
++        $retval .= "/rpsblast+";
+     }
+     $retval .= &add_exe_extension();
+ 
